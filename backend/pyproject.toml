@@ -1,0 +1,24 @@
+[project]
+name = "localreview-backend"
+version = "0.1.0"
+description = "LocalReview API Backend"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.115",
+    "uvicorn[standard]",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg",
+    "geoalchemy2",
+    "alembic",
+    "motor",
+    "redis",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "python-multipart",
+    "pillow",
+    "celery[redis]",
+    "pydantic-settings",
+    "httpx",
+    "pytest",
+    "pytest-asyncio",
+]
