@@ -204,7 +204,22 @@ export default function BusinessDetailPage() {
                 <MapPin className="w-20 h-20 text-indigo-200" />
               </div>
             )}
-            <button className="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-600 hover:bg-white transition shadow-sm">
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: business.name,
+                    text: `Mira ${business.name} en LocalReview`,
+                    url: window.location.href,
+                  }).catch(() => {});
+                } else {
+                  navigator.clipboard?.writeText(window.location.href);
+                  toast.success('Enlace copiado');
+                }
+              }}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-600 hover:bg-white transition shadow-sm"
+              aria-label="Compartir negocio"
+            >
               <Share2 className="w-4 h-4" />
             </button>
           </div>
