@@ -269,6 +269,7 @@ export default function ProfilePage() {
                     review={review}
                     showBusinessLink
                     onDelete={handleDeleteReview}
+                    onEdit={(updated) => setReviews((prev) => prev.map((r) => r.id === updated.id ? updated : r))}
                   />
                 ))}
               </div>

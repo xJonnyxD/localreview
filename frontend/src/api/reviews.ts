@@ -34,3 +34,18 @@ export async function respondToReview(reviewId: string, text: string): Promise<R
 export async function deleteReview(reviewId: string): Promise<void> {
   await api.delete(`/reviews/${reviewId}`);
 }
+
+export async function updateReview(reviewId: string, body: { rating?: number; title?: string; text?: string }): Promise<Review> {
+  const { data } = await api.patch(`/reviews/${reviewId}`, body);
+  return data;
+}
+
+export async function uploadPhoto(file: File, reviewId?: string): Promise<{ url: string; thumbnail_url: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  if (reviewId) form.append('review_id', reviewId);
+  const { data } = await api.post('/photos/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}

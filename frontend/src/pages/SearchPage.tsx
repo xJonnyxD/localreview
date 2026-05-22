@@ -52,6 +52,8 @@ export default function SearchPage() {
     const param = searchParams.get('category_id');
     return param ? parseInt(param) : '';
   });
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
 
   // Cargar categorías al montar
   useEffect(() => {
@@ -68,12 +70,43 @@ export default function SearchPage() {
     if (q) params.q = q;
     if (minRating) params.min_rating = parseFloat(minRating);
     if (selectedCategory !== '') params.category_id = selectedCategory;
+    // Enviar coordenadas si el sort es por distancia
+    if (sort === 'distance' && userCoords) {
+      params.lat = userCoords.lat;
+      params.lng = userCoords.lng;
+    }
     try {
       const res = await searchBusinesses(params);
       setResults(res.items);
       setTotal(res.total);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Cuando el usuario elige "Más cercanos", pedir geolocalización
+  const handleSortChange = (newSort: string) => {
+    if (newSort === 'distance' && !userCoords) {
+      setGeoLoading(true);
+      navigator.geolocation?.getCurrentPosition(
+        (pos) => {
+          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setGeoLoading(false);
+          setSort(newSort);
+          setPage(1);
+        },
+        () => {
+          setGeoLoading(false);
+          // Sin permiso: usar San Salvador como fallback
+          setUserCoords({ lat: 13.6929, lng: -89.2182 });
+          setSort(newSort);
+          setPage(1);
+        },
+        { timeout: 5000 }
+      );
+    } else {
+      setSort(newSort);
+      setPage(1);
     }
   };
 
@@ -175,13 +208,20 @@ export default function SearchPage() {
                   {SORT_OPTIONS.map((o) => (
                     <button
                       key={o.value}
-                      onClick={() => setSort(o.value)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${
+                      onClick={() => handleSortChange(o.value)}
+                      disabled={geoLoading && o.value === 'distance'}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center gap-1.5 ${
                         sort === o.value
                           ? 'bg-indigo-600 text-white border-indigo-600'
                           : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
-                      }`}
+                      } disabled:opacity-60`}
                     >
+                      {geoLoading && o.value === 'distance' && (
+                        <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                      )}
                       {o.label}
                     </button>
                   ))}

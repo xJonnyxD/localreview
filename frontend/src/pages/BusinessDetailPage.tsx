@@ -472,6 +472,7 @@ export default function BusinessDetailPage() {
                   key={review.id}
                   review={review}
                   onHelpful={handleHelpful}
+                  onEdit={(updated) => setReviews((prev) => prev.map((r) => r.id === updated.id ? updated : r))}
                   extra={<CommentThread reviewId={review.id} />}
                 />
               ))}

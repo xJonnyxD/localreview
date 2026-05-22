@@ -25,3 +25,8 @@ export async function createBusiness(payload: Record<string, unknown>): Promise<
   const { data } = await api.post('/businesses', payload);
   return data;
 }
+
+export async function updateBusiness(id: string, payload: Record<string, unknown>): Promise<Business> {
+  const { data } = await api.patch(`/businesses/${id}`, payload);
+  return data;
+}
