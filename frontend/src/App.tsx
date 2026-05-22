@@ -5,6 +5,7 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/Toast';
 import ScrollToTop from './components/ui/ScrollToTop';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -24,9 +25,11 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header />
         <main className="flex-1">
+          <ErrorBoundary>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -38,11 +41,13 @@ export default function App() {
             <Route path="/dashboard/create" element={<CreateBusinessPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </ErrorBoundary>
         </main>
         <Footer />
         <ToastContainer />
         <ScrollToTop />
       </div>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
