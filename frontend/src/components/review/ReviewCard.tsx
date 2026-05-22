@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ThumbsUp, MessageCircle, Star, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ThumbsUp, MessageCircle, Star, Trash2, X, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import type { Review } from '../../types';
 
 interface Props {
@@ -7,6 +8,8 @@ interface Props {
   onHelpful?: (id: string) => void;
   onComment?: (id: string) => void;
   onDelete?: (id: string) => void;
+  /** Muestra enlace "Ver negocio" — útil en ProfilePage */
+  showBusinessLink?: boolean;
   extra?: React.ReactNode;
 }
 
@@ -23,7 +26,7 @@ function getGradient(name: string) {
   return AVATAR_GRADIENTS[i];
 }
 
-export default function ReviewCard({ review, onHelpful, onComment, onDelete, extra }: Props) {
+export default function ReviewCard({ review, onHelpful, onComment, onDelete, showBusinessLink, extra }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const date = new Date(review.created_at).toLocaleDateString('es-SV', {
@@ -165,6 +168,14 @@ export default function ReviewCard({ review, onHelpful, onComment, onDelete, ext
           <MessageCircle className="w-3.5 h-3.5" />
           Comentar
         </button>
+        {showBusinessLink && (
+          <Link
+            to={`/business/${review.business_id}`}
+            className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 transition font-medium ml-auto"
+          >
+            Ver negocio <ExternalLink className="w-3 h-3" />
+          </Link>
+        )}
         {onDelete && (
           <button
             onClick={() => {
@@ -172,7 +183,7 @@ export default function ReviewCard({ review, onHelpful, onComment, onDelete, ext
                 onDelete(review.id);
               }
             }}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition font-medium ml-auto"
+            className={`flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition font-medium ${!showBusinessLink ? 'ml-auto' : ''}`}
           >
             <Trash2 className="w-3.5 h-3.5" />
             Eliminar

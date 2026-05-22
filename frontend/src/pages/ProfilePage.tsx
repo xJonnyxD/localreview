@@ -267,6 +267,7 @@ export default function ProfilePage() {
                   <ReviewCard
                     key={review.id}
                     review={review}
+                    showBusinessLink
                     onDelete={handleDeleteReview}
                   />
                 ))}
