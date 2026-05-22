@@ -1,7 +1,17 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/* Breakpoint extra-small para pantallas >= 480px */
+@custom-variant xs (@media (width >= 480px));
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Mejor tap target en móvil para botones pequeños */
+@media (max-width: 640px) {
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
 }

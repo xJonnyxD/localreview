@@ -20,10 +20,10 @@ export default function Footer() {
   const year = new Date().getFullYear();
   return (
     <footer className="bg-gray-900 text-gray-400 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-10">
           {/* Brand */}
-          <div className="sm:col-span-2 md:col-span-2">
+          <div className="col-span-2 md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-sm">
                 <MapPin className="w-4 h-4 text-white" />

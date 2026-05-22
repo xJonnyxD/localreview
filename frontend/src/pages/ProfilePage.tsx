@@ -119,9 +119,9 @@ export default function ProfilePage() {
 
       <div className="max-w-3xl mx-auto px-4">
         {/* Profile card */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 -mt-14 relative z-10 p-6">
-          <div className="flex items-end gap-5 mb-6">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-3xl font-bold shadow-lg shrink-0 border-4 border-white -mt-14">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 -mt-12 sm:-mt-14 relative z-10 p-4 sm:p-6">
+          <div className="flex items-end gap-3 sm:gap-5 mb-5 sm:mb-6">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-2xl sm:text-3xl font-bold shadow-lg shrink-0 border-4 border-white -mt-12 sm:-mt-14">
               {user.display_name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -198,24 +198,27 @@ export default function ProfilePage() {
           )}
 
           {/* Stats row */}
-          <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-5">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 border-t border-gray-100 pt-4 sm:pt-5">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{total}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{total}</p>
               <p className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
-                <MessageSquare className="w-3.5 h-3.5" /> Resenas
+                <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                <span className="truncate">Resenas</span>
               </p>
             </div>
             <div className="text-center border-x border-gray-100">
-              <p className="text-2xl font-bold text-gray-900">{avgRating}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{avgRating}</p>
               <p className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
-                <Star className="w-3.5 h-3.5 text-yellow-400" /> Rating promedio
+                <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-yellow-400 shrink-0" />
+                <span className="hidden xs:inline truncate">Rating</span>
+                <span className="xs:hidden">★</span>
               </p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">
                 {reviews.reduce((sum, r) => sum + r.helpful_count, 0)}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">Votos utiles</p>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">Votos utiles</p>
             </div>
           </div>
 

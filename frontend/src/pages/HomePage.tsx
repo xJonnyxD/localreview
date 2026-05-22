@@ -71,35 +71,35 @@ export default function HomePage() {
           <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative max-w-4xl mx-auto px-4 py-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 text-sm mb-6">
-            <MapPin className="w-3.5 h-3.5" />
+        <div className="relative max-w-4xl mx-auto px-4 py-12 sm:py-20 text-center">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm mb-4 sm:mb-6">
+            <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             El Salvador
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4 leading-tight">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-3 sm:mb-4 leading-tight">
             Descubre los mejores
             <br />
             <span className="text-yellow-300">negocios locales</span>
           </h1>
-          <p className="text-indigo-100 text-lg sm:text-xl mb-10 max-w-xl mx-auto">
+          <p className="text-indigo-100 text-base sm:text-xl mb-7 sm:mb-10 max-w-xl mx-auto px-2">
             Resenas reales de la comunidad para encontrar los lugares perfectos cerca de ti.
           </p>
 
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-            <div className="flex bg-white rounded-2xl shadow-2xl overflow-hidden p-1.5 gap-1.5">
-              <div className="flex items-center px-3 text-gray-400">
-                <Search className="w-5 h-5" />
+            <div className="flex bg-white rounded-2xl shadow-2xl overflow-hidden p-1 sm:p-1.5 gap-1 sm:gap-1.5">
+              <div className="flex items-center px-2 sm:px-3 text-gray-400">
+                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <input
                 type="text"
-                placeholder="Restaurantes, pupuserias, cafes, servicios..."
-                className="flex-1 py-3 text-gray-900 outline-none text-base bg-transparent placeholder-gray-400"
+                placeholder="Restaurantes, pupuserias, cafes..."
+                className="flex-1 py-2.5 sm:py-3 text-gray-900 outline-none text-sm sm:text-base bg-transparent placeholder-gray-400 min-w-0"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <button
                 type="submit"
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition shrink-0"
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold hover:opacity-90 transition shrink-0 text-sm sm:text-base"
               >
                 Buscar
               </button>
@@ -124,14 +124,15 @@ export default function HomePage() {
       <section className="max-w-5xl mx-auto px-4 -mt-6 relative z-10">
         <div className="grid grid-cols-3 bg-white rounded-2xl shadow-xl border border-gray-100 divide-x divide-gray-100">
           {[
-            { icon: MapPin, label: 'Negocios registrados', value: '2,500+', color: 'text-indigo-500' },
-            { icon: Star, label: 'Resenas autenticas', value: '50,000+', color: 'text-yellow-500' },
-            { icon: TrendingUp, label: 'Usuarios activos', value: '10,000+', color: 'text-green-500' },
-          ].map(({ icon: Icon, label, value, color }) => (
-            <div key={label} className="flex flex-col items-center py-5 px-2">
-              <Icon className={`w-5 h-5 ${color} mb-1.5`} />
-              <p className="text-xl sm:text-2xl font-bold text-gray-900">{value}</p>
-              <p className="text-xs text-gray-500 text-center leading-tight mt-0.5">{label}</p>
+            { icon: MapPin, short: 'Negocios', full: 'Negocios registrados', value: '2,500+', color: 'text-indigo-500' },
+            { icon: Star,   short: 'Resenas',  full: 'Resenas autenticas',   value: '50,000+', color: 'text-yellow-500' },
+            { icon: TrendingUp, short: 'Usuarios', full: 'Usuarios activos', value: '10,000+', color: 'text-green-500' },
+          ].map(({ icon: Icon, short, full, value, color }) => (
+            <div key={short} className="flex flex-col items-center py-4 sm:py-5 px-1 sm:px-2">
+              <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color} mb-1 sm:mb-1.5`} />
+              <p className="text-lg sm:text-2xl font-bold text-gray-900">{value}</p>
+              <p className="text-xs text-gray-500 text-center leading-tight mt-0.5 sm:hidden">{short}</p>
+              <p className="text-xs text-gray-500 text-center leading-tight mt-0.5 hidden sm:block">{full}</p>
             </div>
           ))}
         </div>

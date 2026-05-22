@@ -190,9 +190,9 @@ export default function BusinessDetailPage() {
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         {/* Business header card */}
-        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
           {/* Cover image */}
-          <div className="h-56 sm:h-72 bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100 relative">
+          <div className="h-44 sm:h-56 md:h-72 bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100 relative">
             {business.photo_url ? (
               <img
                 src={business.photo_url}
@@ -209,7 +209,7 @@ export default function BusinessDetailPage() {
             </button>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="flex flex-wrap gap-2 mb-3">
               {business.categories.map((c) => (
                 <span key={c.id} className="bg-indigo-50 text-indigo-700 text-xs px-3 py-1 rounded-full font-semibold">
@@ -222,11 +222,11 @@ export default function BusinessDetailPage() {
                 </span>
               )}
             </div>
-            <h1 className="text-3xl font-extrabold text-gray-900">{business.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">{business.name}</h1>
 
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               <div className="flex items-center gap-1.5">
-                <span className="text-2xl font-bold text-gray-900">{business.avg_rating.toFixed(1)}</span>
+                <span className="text-xl sm:text-2xl font-bold text-gray-900">{business.avg_rating.toFixed(1)}</span>
                 <div className="flex">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Star
@@ -408,18 +408,18 @@ export default function BusinessDetailPage() {
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-sm bg-gray-50 focus:bg-white transition"
                   />
                 </div>
-                <div className="flex gap-3 pt-1">
+                <div className="flex flex-col xs:flex-row gap-2 pt-1">
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition"
+                    className="w-full xs:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition text-center"
                   >
                     {submitting ? 'Publicando...' : 'Publicar resena'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="text-gray-500 hover:text-gray-700 text-sm font-medium px-3"
+                    className="w-full xs:w-auto text-gray-500 hover:text-gray-700 text-sm font-medium px-3 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition text-center"
                   >
                     Cancelar
                   </button>

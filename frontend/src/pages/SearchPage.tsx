@@ -166,49 +166,48 @@ export default function SearchPage() {
           {/* Filters panel */}
           {filtersOpen && (
             <div className="mt-3 space-y-3 pt-3 border-t border-gray-100">
-              {/* Fila 1: Ordenar + Rating */}
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap">
-                    Ordenar:
-                  </label>
-                  <div className="flex gap-1">
-                    {SORT_OPTIONS.map((o) => (
-                      <button
-                        key={o.value}
-                        onClick={() => setSort(o.value)}
-                        className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${
-                          sort === o.value
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
-                        }`}
-                      >
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
+              {/* Fila 1: Ordenar */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap shrink-0">
+                  Ordenar:
+                </label>
+                <div className="flex gap-1 flex-wrap">
+                  {SORT_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      onClick={() => setSort(o.value)}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${
+                        sort === o.value
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                    Rating:
-                  </label>
-                  <div className="flex gap-1">
-                    {RATING_OPTIONS.map((o) => (
-                      <button
-                        key={o.value}
-                        onClick={() => setMinRating(o.value)}
-                        className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center gap-1 ${
-                          minRating === o.value
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
-                        }`}
-                      >
-                        {o.value && <Star className="w-3 h-3" />}
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
+              {/* Fila 2: Rating */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide shrink-0">
+                  Rating:
+                </label>
+                <div className="flex gap-1 flex-wrap">
+                  {RATING_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      onClick={() => setMinRating(o.value)}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center gap-1 ${
+                        minRating === o.value
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                      }`}
+                    >
+                      {o.value && <Star className="w-3 h-3" />}
+                      {o.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
