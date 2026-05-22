@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Search, SlidersHorizontal, Star, X, Map, List, Tag } from 'lucide-react';
 import { searchBusinesses, getCategories } from '../api/businesses';
 import type { Business, Category } from '../types';
@@ -37,6 +38,7 @@ function SkeletonCard() {
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  useDocumentTitle(searchParams.get('q') ? `Buscar: ${searchParams.get('q')}` : 'Buscar negocios');
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [inputValue, setInputValue] = useState(searchParams.get('q') || '');
   const [results, setResults] = useState<Business[]>([]);

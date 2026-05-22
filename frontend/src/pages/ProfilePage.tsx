@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { User, Star, Calendar, MapPin, Edit3, MessageSquare, Save, X, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { toast } from '../stores/toastStore';
 import { deleteReview } from '../api/reviews';
 import type { Review } from '../types';
@@ -18,6 +19,7 @@ const LIMIT = 10;
 
 export default function ProfilePage() {
   const { user, fetchUser } = useAuthStore();
+  useDocumentTitle(user ? `Perfil de ${user.display_name}` : 'Mi perfil');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

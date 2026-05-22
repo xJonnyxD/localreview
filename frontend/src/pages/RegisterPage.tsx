@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { register, login } from '../api/auth';
 import { useAuthStore } from '../stores/authStore';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 function PasswordStrength({ password }: { password: string }) {
   const checks = [
@@ -38,6 +39,7 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export default function RegisterPage() {
+  useDocumentTitle('Crear cuenta');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

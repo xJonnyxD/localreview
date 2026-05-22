@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import {
   Search, MapPin, Star, TrendingUp, Coffee, UtensilsCrossed,
   ShoppingBag, Landmark, Dumbbell, Scissors, ChevronRight, Shield,
@@ -42,6 +43,7 @@ function SkeletonCard() {
 }
 
 export default function HomePage() {
+  useDocumentTitle();
   const [topBusinesses, setTopBusinesses] = useState<Business[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingBiz, setLoadingBiz] = useState(true);

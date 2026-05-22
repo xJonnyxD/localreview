@@ -5,6 +5,7 @@ import { createBusiness, getCategories } from '../api/businesses';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../stores/toastStore';
 import type { Category } from '../types';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const DAYS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
 
@@ -24,6 +25,7 @@ const defaultHours = (): HourEntry[] =>
   }));
 
 export default function CreateBusinessPage() {
+  useDocumentTitle('Crear negocio');
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);

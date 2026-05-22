@@ -10,6 +10,7 @@ import ReviewCard from '../components/review/ReviewCard';
 import CommentThread from '../components/review/CommentThread';
 import BusinessMapLazy from '../components/map/BusinessMapLazy';
 import Pagination from '../components/ui/Pagination';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const DAYS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
 const LIMIT = 10;
@@ -61,6 +62,7 @@ export default function BusinessDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuthStore();
   const [business, setBusiness] = useState<Business | null>(null);
+  useDocumentTitle(business?.name);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Star, Clock } from 'lucide-react';
 import type { Business, BusinessHours } from '../../types';
@@ -52,6 +53,7 @@ function getOpenStatus(hours: BusinessHours[]): { open: boolean; label: string }
 export default function BusinessCard({ business }: Props) {
   const priceLabel = business.price_level ? '$'.repeat(business.price_level) : null;
   const openStatus = getOpenStatus(business.hours);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
     <Link
@@ -61,11 +63,19 @@ export default function BusinessCard({ business }: Props) {
       {/* Image */}
       <div className="h-44 bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 relative overflow-hidden">
         {business.photo_url ? (
-          <img
-            src={business.photo_url}
-            alt={business.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+          <>
+            {/* Skeleton mientras carga */}
+            {!imgLoaded && <div className="absolute inset-0 bg-gray-200 animate-pulse" />}
+            <img
+              src={business.photo_url}
+              alt={business.name}
+              loading="lazy"
+              onLoad={() => setImgLoaded(true)}
+              className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${
+                imgLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <MapPin className="w-12 h-12 text-indigo-200" />

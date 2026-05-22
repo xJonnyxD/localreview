@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BarChart3, Star, MessageSquare, TrendingUp, ThumbsUp, ArrowUp, ArrowDown, Building2, CheckCircle2, Clock, ExternalLink, Plus, Send, Loader2, Pencil } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useAuthStore } from '../stores/authStore';
 import { respondToReview } from '../api/reviews';
 import { toast } from '../stores/toastStore';
@@ -155,6 +156,7 @@ function BusinessStatCard({ s, onEdit }: { s: BusinessStat; onEdit: (id: string,
 }
 
 export default function DashboardPage() {
+  useDocumentTitle('Dashboard');
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [stats, setStats] = useState<BusinessStat[]>([]);

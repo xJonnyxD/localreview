@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Home, Search, ArrowLeft } from 'lucide-react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 export default function NotFoundPage() {
+  useDocumentTitle('Pagina no encontrada');
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="text-center max-w-md">

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { login } from '../api/auth';
 import { useAuthStore } from '../stores/authStore';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const DEMO_ACCOUNTS = [
   { label: 'Usuario', email: 'maria.lopez@email.com', password: 'password123' },
@@ -11,6 +12,7 @@ const DEMO_ACCOUNTS = [
 ];
 
 export default function LoginPage() {
+  useDocumentTitle('Iniciar sesion');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
