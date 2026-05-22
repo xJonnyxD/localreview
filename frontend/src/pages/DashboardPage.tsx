@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BarChart3, Star, MessageSquare, TrendingUp, ThumbsUp, ArrowUp, ArrowDown, Building2, CheckCircle2, Clock, ExternalLink, Plus, Send, Loader2 } from 'lucide-react';
+import { BarChart3, Star, MessageSquare, TrendingUp, ThumbsUp, ArrowUp, ArrowDown, Building2, CheckCircle2, Clock, ExternalLink, Plus, Send, Loader2, Pencil } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { respondToReview } from '../api/reviews';
@@ -7,6 +7,7 @@ import { toast } from '../stores/toastStore';
 import api from '../api/client';
 import type { Review } from '../types';
 import StarRating from '../components/review/StarRating';
+import EditBusinessModal from '../components/business/EditBusinessModal';
 
 interface BusinessStat {
   _id: string;
@@ -118,7 +119,7 @@ function ReviewResponseForm({ review, onResponded }: { review: Review; onRespond
 }
 
 // Card compacta para tabla de negocios en móvil
-function BusinessStatCard({ s }: { s: BusinessStat }) {
+function BusinessStatCard({ s, onEdit }: { s: BusinessStat; onEdit: (id: string, name: string) => void }) {
   return (
     <div className="flex items-center gap-3 p-4 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center shrink-0">
@@ -135,12 +136,20 @@ function BusinessStatCard({ s }: { s: BusinessStat }) {
           <span className="text-xs text-gray-400">{s.total_helpful} votos</span>
         </div>
       </div>
-      <Link
-        to={`/business/${s._id}`}
-        className="shrink-0 flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-      >
-        Ver <ExternalLink className="w-3 h-3" />
-      </Link>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={() => onEdit(s._id, s.business_name || 'Negocio')}
+          className="flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 font-medium transition"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+        <Link
+          to={`/business/${s._id}`}
+          className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+        >
+          Ver <ExternalLink className="w-3 h-3" />
+        </Link>
+      </div>
     </div>
   );
 }
@@ -152,6 +161,7 @@ export default function DashboardPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews'>('overview');
+  const [editingBiz, setEditingBiz] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -216,6 +226,21 @@ export default function DashboardPage() {
 
   const handleResponded = (updated: Review) => {
     setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  };
+
+  const handleEditBiz = (id: string, name: string) => {
+    setEditingBiz({ id, name });
+  };
+
+  const handleBizSaved = async () => {
+    setEditingBiz(null);
+    // Recargar stats para mostrar datos actualizados
+    try {
+      const res = await api.get('/dashboard/stats');
+      setStats(res.data.businesses);
+    } catch {
+      // silencioso
+    }
   };
 
   return (
@@ -375,7 +400,7 @@ export default function DashboardPage() {
 
                 {/* Mobile: cards apiladas */}
                 <div className="sm:hidden">
-                  {stats.map((s) => <BusinessStatCard key={s._id} s={s} />)}
+                  {stats.map((s) => <BusinessStatCard key={s._id} s={s} onEdit={handleEditBiz} />)}
                 </div>
 
                 {/* Desktop: tabla */}
@@ -387,7 +412,7 @@ export default function DashboardPage() {
                         <th className="text-center py-3 px-4 font-semibold">Rating</th>
                         <th className="text-center py-3 px-4 font-semibold">Resenas</th>
                         <th className="text-center py-3 px-4 font-semibold">Votos</th>
-                        <th className="text-center py-3 px-4 font-semibold">Accion</th>
+                        <th className="text-center py-3 px-4 font-semibold">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -419,12 +444,20 @@ export default function DashboardPage() {
                             <span className="font-semibold text-gray-800">{s.total_helpful}</span>
                           </td>
                           <td className="py-4 px-4 text-center">
-                            <Link
-                              to={`/business/${s._id}`}
-                              className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                            >
-                              Ver <ExternalLink className="w-3 h-3" />
-                            </Link>
+                            <div className="flex items-center justify-center gap-3">
+                              <button
+                                onClick={() => handleEditBiz(s._id, s.business_name || 'Negocio')}
+                                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 font-medium transition"
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Editar
+                              </button>
+                              <Link
+                                to={`/business/${s._id}`}
+                                className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                              >
+                                Ver <ExternalLink className="w-3 h-3" />
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -524,6 +557,16 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Modal editar negocio */}
+      {editingBiz && (
+        <EditBusinessModal
+          businessId={editingBiz.id}
+          businessName={editingBiz.name}
+          onSaved={handleBizSaved}
+          onClose={() => setEditingBiz(null)}
+        />
+      )}
     </div>
   );
 }
