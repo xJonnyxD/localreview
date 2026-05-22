@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Star } from 'lucide-react';
-import type { Business } from '../../types';
+import { MapPin, Star, Clock } from 'lucide-react';
+import type { Business, BusinessHours } from '../../types';
 
 interface Props {
   business: Business;
@@ -8,8 +8,50 @@ interface Props {
 
 const PRICE_COLORS = ['', 'text-green-600', 'text-green-600', 'text-amber-600', 'text-red-500'];
 
+/** Devuelve el estado de apertura del negocio basado en sus horarios.
+ *  day_of_week en BD: 0=Lunes … 6=Domingo (ISO).
+ *  JS Date.getDay(): 0=Domingo, 1=Lunes … 6=Sábado → convertir con (jsDay+6)%7
+ */
+function getOpenStatus(hours: BusinessHours[]): { open: boolean; label: string } | null {
+  if (!hours || hours.length === 0) return null;
+
+  // Hora actual en zona El Salvador (UTC-6)
+  const now = new Date();
+  const svTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/El_Salvador' }));
+  const jsDay = svTime.getDay(); // 0=Dom … 6=Sab
+  const todayISO = (jsDay + 6) % 7; // 0=Lun … 6=Dom
+
+  const todayHours = hours.find((h) => h.day_of_week === todayISO);
+  if (!todayHours) return null;
+
+  if (todayHours.is_closed) return { open: false, label: 'Cerrado hoy' };
+
+  const [openH, openM] = todayHours.open_time.split(':').map(Number);
+  const [closeH, closeM] = todayHours.close_time.split(':').map(Number);
+  const nowMinutes = svTime.getHours() * 60 + svTime.getMinutes();
+  const openMinutes = openH * 60 + openM;
+  const closeMinutes = closeH * 60 + closeM;
+
+  let isOpen: boolean;
+  if (closeMinutes < openMinutes) {
+    // Cruza medianoche (ej. 17:00–02:00)
+    isOpen = nowMinutes >= openMinutes || nowMinutes < closeMinutes;
+  } else {
+    isOpen = nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+  }
+
+  // Si cierra en menos de 60 minutos, mostrar aviso
+  const minutesUntilClose = closeMinutes - nowMinutes;
+  if (isOpen && minutesUntilClose > 0 && minutesUntilClose <= 60) {
+    return { open: true, label: `Cierra en ${minutesUntilClose} min` };
+  }
+
+  return { open: isOpen, label: isOpen ? 'Abierto' : 'Cerrado' };
+}
+
 export default function BusinessCard({ business }: Props) {
   const priceLabel = business.price_level ? '$'.repeat(business.price_level) : null;
+  const openStatus = getOpenStatus(business.hours);
 
   return (
     <Link
@@ -85,11 +127,25 @@ export default function BusinessCard({ business }: Props) {
           </span>
         </div>
 
-        {/* Location */}
-        <p className="text-xs text-gray-400 mt-2.5 flex items-center gap-1 truncate">
-          <MapPin className="w-3 h-3 shrink-0" />
-          {business.address}, {business.city}
-        </p>
+        {/* Location + estado abierto/cerrado */}
+        <div className="flex items-center justify-between mt-2.5 gap-2">
+          <p className="text-xs text-gray-400 flex items-center gap-1 truncate min-w-0">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{business.address}, {business.city}</span>
+          </p>
+          {openStatus && (
+            <span
+              className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                openStatus.open
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-red-50 text-red-600'
+              }`}
+            >
+              <Clock className="w-3 h-3" />
+              {openStatus.label}
+            </span>
+          )}
+        </div>
       </div>
     </Link>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { User, Star, Calendar, MapPin, Edit3, MessageSquare, Save, X, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../stores/toastStore';
+import { deleteReview } from '../api/reviews';
 import type { Review } from '../types';
 import ReviewCard from '../components/review/ReviewCard';
 import Pagination from '../components/ui/Pagination';
@@ -72,6 +73,17 @@ export default function ProfilePage() {
     setPage(newPage);
     loadReviews(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    try {
+      await deleteReview(reviewId);
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+      setTotal((t) => t - 1);
+      toast.success('Reseña eliminada');
+    } catch {
+      toast.error('Error al eliminar la reseña');
+    }
   };
 
   if (!user) {
@@ -249,7 +261,11 @@ export default function ProfilePage() {
             <>
               <div className="space-y-4">
                 {reviews.map((review) => (
-                  <ReviewCard key={review.id} review={review} />
+                  <ReviewCard
+                    key={review.id}
+                    review={review}
+                    onDelete={handleDeleteReview}
+                  />
                 ))}
               </div>
               <Pagination page={page} total={total} limit={LIMIT} onChange={handlePageChange} />

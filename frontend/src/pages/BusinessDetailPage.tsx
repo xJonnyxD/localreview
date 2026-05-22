@@ -392,10 +392,16 @@ export default function BusinessDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tu experiencia</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Tu experiencia</label>
+                    <span className={`text-xs ${newText.length > 900 ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
+                      {newText.length}/1000
+                    </span>
+                  </div>
                   <textarea
                     required
                     rows={4}
+                    maxLength={1000}
                     value={newText}
                     onChange={(e) => setNewText(e.target.value)}
                     placeholder="Cuenta tu experiencia en detalle..."

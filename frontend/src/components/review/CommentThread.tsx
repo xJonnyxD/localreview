@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageCircle, Send, User, Loader2 } from 'lucide-react';
+import { MessageCircle, Send, Loader2 } from 'lucide-react';
 import { getComments, addComment } from '../../api/reviews';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../stores/toastStore';
@@ -87,26 +87,33 @@ export default function CommentThread({ reviewId, commentCount = 0 }: CommentThr
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0 mt-1">
                 {user.display_name.charAt(0).toUpperCase()}
               </div>
-              <div className="flex-1 flex gap-2">
-                <input
-                  type="text"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Escribe un comentario..."
-                  className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-gray-50 focus:bg-white transition"
-                  maxLength={500}
-                />
-                <button
-                  type="submit"
-                  disabled={submitting || !text.trim()}
-                  className="px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition"
-                >
-                  {submitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                </button>
+              <div className="flex-1 space-y-1">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="Escribe un comentario..."
+                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-gray-50 focus:bg-white transition"
+                    maxLength={500}
+                  />
+                  <button
+                    type="submit"
+                    disabled={submitting || !text.trim()}
+                    className="px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                {text.length > 0 && (
+                  <p className={`text-xs text-right ${text.length > 450 ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
+                    {text.length}/500
+                  </p>
+                )}
               </div>
             </form>
           ) : (

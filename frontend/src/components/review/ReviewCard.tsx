@@ -1,10 +1,12 @@
-import { ThumbsUp, MessageCircle, Star } from 'lucide-react';
+import { useState } from 'react';
+import { ThumbsUp, MessageCircle, Star, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Review } from '../../types';
 
 interface Props {
   review: Review;
   onHelpful?: (id: string) => void;
   onComment?: (id: string) => void;
+  onDelete?: (id: string) => void;
   extra?: React.ReactNode;
 }
 
@@ -21,7 +23,9 @@ function getGradient(name: string) {
   return AVATAR_GRADIENTS[i];
 }
 
-export default function ReviewCard({ review, onHelpful, onComment, extra }: Props) {
+export default function ReviewCard({ review, onHelpful, onComment, onDelete, extra }: Props) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   const date = new Date(review.created_at).toLocaleDateString('es-SV', {
     year: 'numeric',
     month: 'short',
@@ -78,13 +82,60 @@ export default function ReviewCard({ review, onHelpful, onComment, extra }: Prop
       {review.photos.length > 0 && (
         <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
           {review.photos.map((photo, i) => (
-            <img
+            <button
               key={i}
-              src={photo.thumbnail_url || photo.url}
-              alt=""
-              className="w-20 h-20 rounded-xl object-cover shrink-0"
-            />
+              type="button"
+              onClick={() => setLightboxIndex(i)}
+              className="shrink-0 focus:outline-none rounded-xl overflow-hidden"
+            >
+              <img
+                src={photo.thumbnail_url || photo.url}
+                alt=""
+                className="w-20 h-20 rounded-xl object-cover hover:opacity-90 transition cursor-pointer"
+              />
+            </button>
           ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && review.photos.length > 0 && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[9998] flex items-center justify-center p-4"
+          onClick={() => setLightboxIndex(null)}
+        >
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={review.photos[lightboxIndex].url}
+              alt=""
+              className="w-full max-h-[80vh] object-contain rounded-2xl"
+            />
+            <button
+              onClick={() => setLightboxIndex(null)}
+              className="absolute top-3 right-3 w-9 h-9 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center text-white transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            {review.photos.length > 1 && (
+              <>
+                <button
+                  onClick={() => setLightboxIndex((lightboxIndex - 1 + review.photos.length) % review.photos.length)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center text-white transition"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setLightboxIndex((lightboxIndex + 1) % review.photos.length)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center text-white transition"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                <p className="text-center text-white/70 text-sm mt-2">
+                  {lightboxIndex + 1} / {review.photos.length}
+                </p>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -114,6 +165,19 @@ export default function ReviewCard({ review, onHelpful, onComment, extra }: Prop
           <MessageCircle className="w-3.5 h-3.5" />
           Comentar
         </button>
+        {onDelete && (
+          <button
+            onClick={() => {
+              if (window.confirm('¿Eliminar esta reseña? Esta acción no se puede deshacer.')) {
+                onDelete(review.id);
+              }
+            }}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition font-medium ml-auto"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Eliminar
+          </button>
+        )}
       </div>
 
       {extra && <div className="mt-3">{extra}</div>}
