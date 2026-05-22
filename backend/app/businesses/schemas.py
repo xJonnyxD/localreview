@@ -38,12 +38,12 @@ class BusinessCreate(BaseModel):
     city: str
     state: str | None = None
     postal_code: str | None = None
-    country: str = "MX"
+    country: str = "SV"
     phone: str | None = None
     email: str | None = None
     website: str | None = None
-    latitude: float
-    longitude: float
+    latitude: float = 13.6929
+    longitude: float = -89.2182
     price_level: int | None = None
     category_ids: list[int] = []
     hours: list[BusinessHoursCreate] = []

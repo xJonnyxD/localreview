@@ -1,38 +1,70 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Star, TrendingUp, Coffee, UtensilsCrossed, ShoppingBag, Landmark, Dumbbell, Scissors, ChevronRight, Shield } from 'lucide-react';
-import { getBusinesses } from '../api/businesses';
-import type { Business } from '../types';
+import {
+  Search, MapPin, Star, TrendingUp, Coffee, UtensilsCrossed,
+  ShoppingBag, Landmark, Dumbbell, Scissors, ChevronRight, Shield,
+} from 'lucide-react';
+import { getBusinesses, getCategories } from '../api/businesses';
+import type { Business, Category } from '../types';
 import BusinessCard from '../components/business/BusinessCard';
 
-const CATEGORIES = [
-  { icon: UtensilsCrossed, label: 'Restaurantes', q: 'restaurante', color: 'text-orange-500 bg-orange-50 hover:bg-orange-100' },
-  { icon: Coffee, label: 'Cafes', q: 'cafe', color: 'text-amber-500 bg-amber-50 hover:bg-amber-100' },
-  { icon: ShoppingBag, label: 'Compras', q: 'tienda', color: 'text-blue-500 bg-blue-50 hover:bg-blue-100' },
-  { icon: Landmark, label: 'Turismo', q: 'turistico', color: 'text-green-500 bg-green-50 hover:bg-green-100' },
-  { icon: Dumbbell, label: 'Fitness', q: 'gym', color: 'text-purple-500 bg-purple-50 hover:bg-purple-100' },
-  { icon: Scissors, label: 'Belleza', q: 'salon', color: 'text-pink-500 bg-pink-50 hover:bg-pink-100' },
-];
+// Íconos por slug de categoría
+const CAT_ICONS: Record<string, { icon: React.ElementType; color: string }> = {
+  restaurantes:  { icon: UtensilsCrossed, color: 'text-orange-500 bg-orange-50 hover:bg-orange-100' },
+  'comida-rapida': { icon: UtensilsCrossed, color: 'text-red-500 bg-red-50 hover:bg-red-100' },
+  cafes:         { icon: Coffee,           color: 'text-amber-500 bg-amber-50 hover:bg-amber-100' },
+  tiendas:       { icon: ShoppingBag,      color: 'text-blue-500 bg-blue-50 hover:bg-blue-100' },
+  turismo:       { icon: Landmark,         color: 'text-green-500 bg-green-50 hover:bg-green-100' },
+  gimnasios:     { icon: Dumbbell,         color: 'text-purple-500 bg-purple-50 hover:bg-purple-100' },
+  salones:       { icon: Scissors,         color: 'text-pink-500 bg-pink-50 hover:bg-pink-100' },
+};
+const DEFAULT_CAT = { icon: MapPin, color: 'text-indigo-500 bg-indigo-50 hover:bg-indigo-100' };
+
+function getCatStyle(cat: Category) {
+  // Busca por slug o por substring del nombre
+  const key = Object.keys(CAT_ICONS).find(
+    (k) => cat.slug?.includes(k) || cat.name?.toLowerCase().includes(k)
+  );
+  return key ? CAT_ICONS[key] : DEFAULT_CAT;
+}
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+      <div className="h-44 bg-gray-200" />
+      <div className="p-4 space-y-2.5">
+        <div className="h-4 bg-gray-200 rounded w-3/4" />
+        <div className="h-3 bg-gray-200 rounded w-1/2" />
+        <div className="h-3 bg-gray-200 rounded w-1/3" />
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const [topBusinesses, setTopBusinesses] = useState<Business[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingBiz, setLoadingBiz] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    getBusinesses({ limit: 6 }).then((res) => setTopBusinesses(res.items));
+    getBusinesses({ limit: 6 })
+      .then((res) => setTopBusinesses(res.items))
+      .finally(() => setLoadingBiz(false));
+    getCategories().then((cats) => setCategories(cats.slice(0, 6)));
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`/search?q=${searchQuery}`);
+    if (searchQuery.trim()) navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    else navigate('/search');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Hero */}
       <section className="relative bg-gradient-to-br from-indigo-700 via-indigo-600 to-purple-700 text-white overflow-hidden">
-        {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-32 -right-32 w-96 h-96 bg-white/5 rounded-full" />
           <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-white/5 rounded-full" />
@@ -53,7 +85,6 @@ export default function HomePage() {
             Resenas reales de la comunidad para encontrar los lugares perfectos cerca de ti.
           </p>
 
-          {/* Search */}
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
             <div className="flex bg-white rounded-2xl shadow-2xl overflow-hidden p-1.5 gap-1.5">
               <div className="flex items-center px-3 text-gray-400">
@@ -75,7 +106,6 @@ export default function HomePage() {
             </div>
           </form>
 
-          {/* Quick suggestions */}
           <div className="flex flex-wrap justify-center gap-2 mt-5">
             {['Pupuserias', 'Mariscos', 'Cafe', 'Parques'].map((s) => (
               <Link
@@ -118,18 +148,35 @@ export default function HomePage() {
             Ver todo <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-          {CATEGORIES.map(({ icon: Icon, label, q, color }) => (
-            <Link
-              key={label}
-              to={`/search?q=${q}`}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition cursor-pointer ${color}`}
-            >
-              <Icon className="w-6 h-6" />
-              <span className="text-xs font-semibold text-gray-700 text-center">{label}</span>
-            </Link>
-          ))}
-        </div>
+
+        {categories.length > 0 ? (
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {categories.map((cat) => {
+              const { icon: Icon, color } = getCatStyle(cat);
+              return (
+                <Link
+                  key={cat.id}
+                  to={`/search?category_id=${cat.id}`}
+                  onClick={() => {
+                    // Pasa category_id como searchParam en SearchPage
+                    sessionStorage.setItem('filter_category_id', String(cat.id));
+                    sessionStorage.setItem('filter_category_name', cat.name);
+                  }}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition cursor-pointer ${color}`}
+                >
+                  <Icon className="w-6 h-6" />
+                  <span className="text-xs font-semibold text-gray-700 text-center leading-tight">{cat.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {[1,2,3,4,5,6].map((i) => (
+              <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Top businesses */}
@@ -144,7 +191,11 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {topBusinesses.length > 0 ? (
+        {loadingBiz ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1,2,3,4,5,6].map((i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : topBusinesses.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {topBusinesses.map((b) => (
               <BusinessCard key={b.id} business={b} />

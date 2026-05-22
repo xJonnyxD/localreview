@@ -33,7 +33,7 @@ class Business(Base):
     city: Mapped[str] = mapped_column(String(100), nullable=False)
     state: Mapped[str | None] = mapped_column(String(100))
     postal_code: Mapped[str | None] = mapped_column(String(20))
-    country: Mapped[str] = mapped_column(String(100), default="MX")
+    country: Mapped[str] = mapped_column(String(100), default="SV")
     phone: Mapped[str | None] = mapped_column(String(30))
     email: Mapped[str | None] = mapped_column(String(255))
     website: Mapped[str | None] = mapped_column(String(500))

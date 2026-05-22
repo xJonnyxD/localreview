@@ -5,6 +5,7 @@ interface Props {
   review: Review;
   onHelpful?: (id: string) => void;
   onComment?: (id: string) => void;
+  extra?: React.ReactNode;
 }
 
 const AVATAR_GRADIENTS = [
@@ -20,7 +21,7 @@ function getGradient(name: string) {
   return AVATAR_GRADIENTS[i];
 }
 
-export default function ReviewCard({ review, onHelpful, onComment }: Props) {
+export default function ReviewCard({ review, onHelpful, onComment, extra }: Props) {
   const date = new Date(review.created_at).toLocaleDateString('es-SV', {
     year: 'numeric',
     month: 'short',
@@ -114,6 +115,8 @@ export default function ReviewCard({ review, onHelpful, onComment }: Props) {
           Comentar
         </button>
       </div>
+
+      {extra && <div className="mt-3">{extra}</div>}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { User, Star, Calendar, MapPin, Edit3, MessageSquare } from 'lucide-react';
+import { User, Star, Calendar, MapPin, Edit3, MessageSquare, Save, X, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { toast } from '../stores/toastStore';
 import type { Review } from '../types';
 import ReviewCard from '../components/review/ReviewCard';
+import Pagination from '../components/ui/Pagination';
 import api from '../api/client';
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
@@ -11,18 +13,66 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   admin: { label: 'Admin', color: 'bg-purple-100 text-purple-700' },
 };
 
+const LIMIT = 10;
+
 export default function ProfilePage() {
-  const { user } = useAuthStore();
+  const { user, fetchUser } = useAuthStore();
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+
+  // Edit mode
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const loadReviews = async (pageNum: number) => {
+    if (!user) return;
+    const res = await api.get(`/reviews/user/${user.id}`, { params: { page: pageNum, limit: LIMIT } });
+    setReviews(res.data.items);
+    setTotal(res.data.total ?? res.data.items.length);
+  };
 
   useEffect(() => {
     if (user) {
-      api.get(`/reviews/user/${user.id}`)
-        .then((res) => setReviews(res.data.items))
-        .finally(() => setLoading(false));
+      loadReviews(1).finally(() => setLoading(false));
     }
   }, [user]);
+
+  const handleStartEdit = () => {
+    setEditName(user?.display_name || '');
+    setEditBio(user?.bio || '');
+    setEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!editName.trim()) {
+      toast.error('El nombre no puede estar vacio');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.patch('/users/me', {
+        display_name: editName.trim(),
+        bio: editBio.trim() || null,
+      });
+      await fetchUser();
+      setEditing(false);
+      toast.success('Perfil actualizado');
+    } catch {
+      toast.error('Error al actualizar el perfil');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    loadReviews(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (!user) {
     return (
@@ -63,24 +113,82 @@ export default function ProfilePage() {
               {user.display_name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-bold text-gray-900">{user.display_name}</h1>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${role.color}`}>
-                  {role.label}
-                </span>
-              </div>
-              <p className="text-gray-500 text-sm mt-0.5">{user.email}</p>
+              {editing ? (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Tu nombre"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-gray-50 focus:bg-white transition font-bold text-gray-900"
+                  />
+                  <textarea
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    placeholder="Cuéntanos algo sobre ti..."
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none bg-gray-50 focus:bg-white transition text-gray-600"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-2xl font-bold text-gray-900">{user.display_name}</h1>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${role.color}`}>
+                      {role.label}
+                    </span>
+                  </div>
+                  <p className="text-gray-500 text-sm mt-0.5">{user.email}</p>
+                  {user.bio && (
+                    <p className="text-gray-600 text-sm mt-1 leading-snug">{user.bio}</p>
+                  )}
+                </>
+              )}
             </div>
-            <button className="hidden sm:flex items-center gap-1.5 text-sm text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition shrink-0">
-              <Edit3 className="w-4 h-4" />
-              Editar
-            </button>
+
+            {/* Botón editar / guardar */}
+            {editing ? (
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 text-sm bg-indigo-600 text-white border border-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Guardar
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="flex items-center gap-1 text-sm text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleStartEdit}
+                className="hidden sm:flex items-center gap-1.5 text-sm text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition shrink-0"
+              >
+                <Edit3 className="w-4 h-4" />
+                Editar
+              </button>
+            )}
           </div>
+
+          {/* Mobile edit button */}
+          {!editing && (
+            <button
+              onClick={handleStartEdit}
+              className="sm:hidden flex items-center gap-1.5 text-sm text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition mb-4 w-full justify-center"
+            >
+              <Edit3 className="w-4 h-4" /> Editar perfil
+            </button>
+          )}
 
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-5">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{reviews.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{total}</p>
               <p className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
                 <MessageSquare className="w-3.5 h-3.5" /> Resenas
               </p>
@@ -116,8 +224,8 @@ export default function ProfilePage() {
         <div className="mt-8 pb-12">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-bold text-gray-900">Mis Resenas</h2>
-            {reviews.length > 0 && (
-              <span className="text-sm text-gray-500">{reviews.length} resena{reviews.length !== 1 ? 's' : ''}</span>
+            {total > 0 && (
+              <span className="text-sm text-gray-500">{total} resena{total !== 1 ? 's' : ''}</span>
             )}
           </div>
 
@@ -138,11 +246,14 @@ export default function ProfilePage() {
               ))}
             </div>
           ) : reviews.length > 0 ? (
-            <div className="space-y-4">
-              {reviews.map((review) => (
-                <ReviewCard key={review.id} review={review} />
-              ))}
-            </div>
+            <>
+              <div className="space-y-4">
+                {reviews.map((review) => (
+                  <ReviewCard key={review.id} review={review} />
+                ))}
+              </div>
+              <Pagination page={page} total={total} limit={LIMIT} onChange={handlePageChange} />
+            </>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
               <MessageSquare className="w-10 h-10 text-gray-200 mx-auto mb-3" />

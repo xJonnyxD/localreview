@@ -1,4 +1,5 @@
 import json
+import struct
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -26,10 +27,29 @@ from app.users.models import User
 router = APIRouter(prefix="/api/v1/businesses", tags=["businesses"])
 
 
+def _parse_wkb_point(wkb_element) -> tuple[float | None, float | None]:
+    """Extrae lat/lng de un WKBElement de PostGIS (EWKB little-endian)."""
+    try:
+        hex_str = str(wkb_element)
+        raw = bytes.fromhex(hex_str)
+        # byte 0: byte order (1 = little-endian)
+        byte_order = raw[0]
+        fmt = "<" if byte_order == 1 else ">"
+        # bytes 1-4: type (puede tener flag 0x20000000 para SRID)
+        wkb_type = struct.unpack(fmt + "I", raw[1:5])[0]
+        has_srid = bool(wkb_type & 0x20000000)
+        offset = 5 + (4 if has_srid else 0)
+        lng, lat = struct.unpack(fmt + "dd", raw[offset : offset + 16])
+        return round(lat, 6), round(lng, 6)
+    except Exception:
+        return None, None
+
+
 def business_to_response(b) -> dict:
     data = {c.key: getattr(b, c.key) for c in b.__table__.columns if c.key != "location"}
-    data["latitude"] = None
-    data["longitude"] = None
+    lat, lng = _parse_wkb_point(b.location) if b.location else (None, None)
+    data["latitude"] = lat
+    data["longitude"] = lng
     data["categories"] = b.categories
     data["hours"] = b.hours
     return data

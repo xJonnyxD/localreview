@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { BarChart3, Star, MessageSquare, TrendingUp, ThumbsUp, ArrowUp, ArrowDown, Building2, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { BarChart3, Star, MessageSquare, TrendingUp, ThumbsUp, ArrowUp, ArrowDown, Building2, CheckCircle2, Clock, ExternalLink, Plus, Send, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { respondToReview } from '../api/reviews';
+import { toast } from '../stores/toastStore';
 import api from '../api/client';
 import type { Review } from '../types';
 import StarRating from '../components/review/StarRating';
@@ -50,8 +52,74 @@ function StatCard({
   );
 }
 
+function ReviewResponseForm({ review, onResponded }: { review: Review; onResponded: (updated: Review) => void }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setSubmitting(true);
+    try {
+      const updated = await respondToReview(review.id, text.trim());
+      onResponded(updated);
+      setOpen(false);
+      setText('');
+      toast.success('Respuesta publicada');
+    } catch {
+      toast.error('Error al publicar la respuesta');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (review.owner_response) return null;
+
+  return (
+    <div className="mt-3">
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+        >
+          <Send className="w-3.5 h-3.5" /> Responder a esta resena
+        </button>
+      ) : (
+        <form onSubmit={handleSubmit} className="mt-2 space-y-2">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            placeholder="Escribe tu respuesta como propietario..."
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-400 resize-none bg-gray-50 focus:bg-white transition"
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={submitting || !text.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
+            >
+              {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Publicar respuesta
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setText(''); }}
+              className="text-xs text-gray-500 hover:text-gray-700 font-medium px-2"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<BusinessStat[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +186,10 @@ export default function DashboardPage() {
     ? Math.round(((reviews.length - pendingReplies) / reviews.length) * 100)
     : 0;
 
+  const handleResponded = (updated: Review) => {
+    setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Page header */}
@@ -130,9 +202,18 @@ export default function DashboardPage() {
                 Bienvenido, {user.display_name} — vision general de tus negocios
               </p>
             </div>
-            <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              En vivo
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/dashboard/create')}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Crear negocio</span>
+              </button>
+              <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                En vivo
+              </div>
             </div>
           </div>
 
@@ -148,7 +229,7 @@ export default function DashboardPage() {
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                {tab === 'overview' ? 'Vision General' : 'Resenas'}
+                {tab === 'overview' ? 'Vision General' : `Resenas${pendingReplies > 0 ? ` (${pendingReplies})` : ''}`}
               </button>
             ))}
           </div>
@@ -250,9 +331,17 @@ export default function DashboardPage() {
             {/* Per-business table */}
             {stats.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-indigo-600" />
-                  <h2 className="font-bold text-gray-900">Rendimiento por Negocio</h2>
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-indigo-600" />
+                    <h2 className="font-bold text-gray-900">Rendimiento por Negocio</h2>
+                  </div>
+                  <button
+                    onClick={() => navigate('/dashboard/create')}
+                    className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition"
+                  >
+                    <Plus className="w-4 h-4" /> Agregar negocio
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -308,6 +397,21 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Si no hay negocios */}
+            {stats.length === 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
+                <Building2 className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="font-semibold text-gray-500 mb-1">No tienes negocios registrados</p>
+                <p className="text-sm text-gray-400 mb-5">Crea tu primer negocio para empezar a recibir resenas</p>
+                <button
+                  onClick={() => navigate('/dashboard/create')}
+                  className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition"
+                >
+                  <Plus className="w-4 h-4" /> Crear primer negocio
+                </button>
+              </div>
+            )}
           </>
         )}
 
@@ -360,6 +464,8 @@ export default function DashboardPage() {
                             <p className="text-sm text-gray-700">{review.owner_response.text}</p>
                           </div>
                         )}
+                        {/* Formulario de respuesta */}
+                        <ReviewResponseForm review={review} onResponded={handleResponded} />
                       </div>
                     </div>
                   </div>

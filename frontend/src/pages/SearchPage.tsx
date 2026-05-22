@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, SlidersHorizontal, Star, X } from 'lucide-react';
-import { searchBusinesses } from '../api/businesses';
-import type { Business } from '../types';
+import { Search, SlidersHorizontal, Star, X, Map, List, Tag } from 'lucide-react';
+import { searchBusinesses, getCategories } from '../api/businesses';
+import type { Business, Category } from '../types';
 import BusinessCard from '../components/business/BusinessCard';
+import BusinessMapLazy from '../components/map/BusinessMapLazy';
+import Pagination from '../components/ui/Pagination';
 
 const SORT_OPTIONS = [
   { value: 'rating', label: 'Mejor calificados' },
@@ -17,6 +19,8 @@ const RATING_OPTIONS = [
   { value: '3', label: '3+ estrellas' },
   { value: '2', label: '2+ estrellas' },
 ];
+
+const LIMIT = 12;
 
 function SkeletonCard() {
   return (
@@ -41,12 +45,29 @@ export default function SearchPage() {
   const [minRating, setMinRating] = useState('');
   const [sort, setSort] = useState('rating');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [page, setPage] = useState(1);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | ''>(() => {
+    const param = searchParams.get('category_id');
+    return param ? parseInt(param) : '';
+  });
 
-  const doSearch = async (q: string) => {
+  // Cargar categorías al montar
+  useEffect(() => {
+    getCategories().then(setCategories).catch(() => {});
+  }, []);
+
+  const doSearch = async (q: string, currentPage = 1) => {
     setLoading(true);
-    const params: Record<string, string | number> = { sort };
+    const params: Record<string, string | number> = {
+      sort,
+      limit: LIMIT,
+      skip: (currentPage - 1) * LIMIT,
+    };
     if (q) params.q = q;
     if (minRating) params.min_rating = parseFloat(minRating);
+    if (selectedCategory !== '') params.category_id = selectedCategory;
     try {
       const res = await searchBusinesses(params);
       setResults(res.items);
@@ -57,32 +78,48 @@ export default function SearchPage() {
   };
 
   useEffect(() => {
-    doSearch(query);
-  }, [sort, minRating]);
+    setPage(1);
+    doSearch(query, 1);
+  }, [sort, minRating, selectedCategory]);
 
-  // Sync query from URL on mount
   useEffect(() => {
     const q = searchParams.get('q') || '';
+    const catId = searchParams.get('category_id');
+    if (catId) setSelectedCategory(parseInt(catId));
     setQuery(q);
     setInputValue(q);
-    doSearch(q);
+    doSearch(q, 1);
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setQuery(inputValue);
+    setPage(1);
     setSearchParams(inputValue ? { q: inputValue } : {});
-    doSearch(inputValue);
+    doSearch(inputValue, 1);
   };
 
   const clearQuery = () => {
     setInputValue('');
     setQuery('');
+    setPage(1);
     setSearchParams({});
-    doSearch('');
+    doSearch('', 1);
   };
 
-  const hasFilters = minRating !== '' || sort !== 'rating';
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    doSearch(query, newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const clearAllFilters = () => {
+    setSort('rating');
+    setMinRating('');
+    setSelectedCategory('');
+  };
+
+  const hasFilters = minRating !== '' || sort !== 'rating' || selectedCategory !== '';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -128,52 +165,97 @@ export default function SearchPage() {
 
           {/* Filters panel */}
           {filtersOpen && (
-            <div className="mt-3 flex flex-wrap gap-3 pt-3 border-t border-gray-100">
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Ordenar:</label>
-                <div className="flex gap-1">
-                  {SORT_OPTIONS.map((o) => (
+            <div className="mt-3 space-y-3 pt-3 border-t border-gray-100">
+              {/* Fila 1: Ordenar + Rating */}
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap">
+                    Ordenar:
+                  </label>
+                  <div className="flex gap-1">
+                    {SORT_OPTIONS.map((o) => (
+                      <button
+                        key={o.value}
+                        onClick={() => setSort(o.value)}
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${
+                          sort === o.value
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                        }`}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    Rating:
+                  </label>
+                  <div className="flex gap-1">
+                    {RATING_OPTIONS.map((o) => (
+                      <button
+                        key={o.value}
+                        onClick={() => setMinRating(o.value)}
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center gap-1 ${
+                          minRating === o.value
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                        }`}
+                      >
+                        {o.value && <Star className="w-3 h-3" />}
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Fila 2: Categorías */}
+              {categories.length > 0 && (
+                <div className="flex items-start gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Tag className="w-3.5 h-3.5 text-gray-500" />
+                    <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap">
+                      Categoria:
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
                     <button
-                      key={o.value}
-                      onClick={() => setSort(o.value)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${
-                        sort === o.value
+                      onClick={() => setSelectedCategory('')}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition font-medium ${
+                        selectedCategory === ''
                           ? 'bg-indigo-600 text-white border-indigo-600'
                           : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
                       }`}
                     >
-                      {o.label}
+                      Todas
                     </button>
-                  ))}
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setSelectedCategory(cat.id === selectedCategory ? '' : cat.id)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition font-medium ${
+                          selectedCategory === cat.id
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Rating:</label>
-                <div className="flex gap-1">
-                  {RATING_OPTIONS.map((o) => (
-                    <button
-                      key={o.value}
-                      onClick={() => setMinRating(o.value)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center gap-1 ${
-                        minRating === o.value
-                          ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
-                      }`}
-                    >
-                      {o.value && <Star className="w-3 h-3" />}
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+              {/* Limpiar filtros */}
               {hasFilters && (
                 <button
-                  onClick={() => { setSort('rating'); setMinRating(''); }}
-                  className="text-xs text-red-500 hover:text-red-700 px-2 font-medium"
+                  onClick={clearAllFilters}
+                  className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1"
                 >
-                  Limpiar filtros
+                  <X className="w-3 h-3" /> Limpiar todos los filtros
                 </button>
               )}
             </div>
@@ -183,45 +265,104 @@ export default function SearchPage() {
 
       {/* Results */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Results count */}
+        {/* Results count + view toggle */}
         <div className="flex items-center justify-between mb-5">
-          <p className="text-sm text-gray-500">
-            {loading ? 'Buscando...' : (
-              query
-                ? <><span className="font-semibold text-gray-900">{total}</span> resultado{total !== 1 ? 's' : ''} para "<span className="font-semibold text-indigo-600">{query}</span>"</>
-                : <><span className="font-semibold text-gray-900">{total}</span> negocios encontrados</>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm text-gray-500">
+              {loading ? 'Buscando...' : (
+                query
+                  ? <><span className="font-semibold text-gray-900">{total}</span> resultado{total !== 1 ? 's' : ''} para "<span className="font-semibold text-indigo-600">{query}</span>"</>
+                  : <><span className="font-semibold text-gray-900">{total}</span> negocios encontrados</>
+              )}
+            </p>
+            {/* Chips de filtros activos */}
+            {selectedCategory !== '' && (
+              <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full font-medium">
+                <Tag className="w-3 h-3" />
+                {categories.find((c) => c.id === selectedCategory)?.name}
+                <button onClick={() => setSelectedCategory('')} className="hover:text-indigo-900 ml-0.5">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
             )}
-          </p>
+            {minRating && (
+              <span className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 text-xs px-2.5 py-1 rounded-full font-medium">
+                <Star className="w-3 h-3 fill-yellow-500" />
+                {minRating}+ estrellas
+                <button onClick={() => setMinRating('')} className="hover:text-yellow-900 ml-0.5">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
+
+          {/* Toggle lista / mapa */}
+          <div className="flex items-center bg-gray-100 rounded-xl p-1 shrink-0">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                viewMode === 'list' ? 'bg-white shadow-sm text-indigo-700' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" /> Lista
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                viewMode === 'map' ? 'bg-white shadow-sm text-indigo-700' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Map className="w-3.5 h-3.5" /> Mapa
+            </button>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3, 4, 5, 6].map((i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : results.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {results.map((b) => (
-              <BusinessCard key={b.id} business={b} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-              <Search className="w-8 h-8 text-gray-300" />
-            </div>
-            <h3 className="font-bold text-gray-900 mb-1">Sin resultados</h3>
-            <p className="text-gray-500 text-sm max-w-xs">
-              No encontramos negocios con esos criterios. Intenta con otras palabras o quita los filtros.
-            </p>
-            {hasFilters && (
-              <button
-                onClick={() => { setSort('rating'); setMinRating(''); }}
-                className="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-              >
-                Limpiar filtros
-              </button>
+        {/* Vista mapa */}
+        {viewMode === 'map' && !loading && (
+          <div className="mb-6">
+            <BusinessMapLazy businesses={results} height={500} />
+            {results.length === 0 && (
+              <p className="text-center text-sm text-gray-400 mt-3">Sin negocios para mostrar en el mapa</p>
             )}
           </div>
+        )}
+
+        {/* Vista lista */}
+        {viewMode === 'list' && (
+          <>
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {[1, 2, 3, 4, 5, 6].map((i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : results.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {results.map((b) => (
+                    <BusinessCard key={b.id} business={b} />
+                  ))}
+                </div>
+                <Pagination page={page} total={total} limit={LIMIT} onChange={handlePageChange} />
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                  <Search className="w-8 h-8 text-gray-300" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-1">Sin resultados</h3>
+                <p className="text-gray-500 text-sm max-w-xs">
+                  No encontramos negocios con esos criterios. Intenta con otras palabras o quita los filtros.
+                </p>
+                {hasFilters && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

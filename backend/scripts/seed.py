@@ -8,16 +8,42 @@ Usage:
 """
 
 import asyncio
+import sys
+import types
+
+# Fix for Python 3.14+ on Windows: force SelectorEventLoop for asyncpg compatibility
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # type: ignore
+
+# asyncore shim for cassandra-driver on Python 3.12+
+if "asyncore" not in sys.modules:
+    _a = types.ModuleType("asyncore")
+    class _D:
+        def __init__(self, sock=None, map=None): pass
+        def set_socket(self, s, map=None): pass
+        def close(self): pass
+    _a.dispatcher = _D  # type: ignore
+    _a.loop = lambda **kw: None  # type: ignore
+    _a.socket_map = {}  # type: ignore
+    sys.modules["asyncore"] = _a
+
 import random
 import uuid
 from datetime import datetime, time, timezone, timedelta
 
 import asyncpg
 from motor.motor_asyncio import AsyncIOMotorClient
+from cassandra.cluster import Cluster
+from cassandra.io.asyncioreactor import AsyncioConnection
+from cassandra.policies import DCAwareRoundRobinPolicy
+from cassandra.query import dict_factory
 
-PG_DSN = "postgresql://localreview:localreview_dev@localhost:5432/localreview"
+PG_DSN = "postgresql://localreview:localreview_dev@localhost:5434/localreview"
 MONGO_URL = "mongodb://localhost:27017"
 MONGO_DB = "localreview"
+CASSANDRA_HOST = "localhost"
+CASSANDRA_PORT = 9042
+CASSANDRA_KEYSPACE = "localreview"
 
 # ── Categories ──────────────────────────────────────────────────────────
 
@@ -532,6 +558,30 @@ async def seed():
     mongo_client = AsyncIOMotorClient(MONGO_URL)
     mongo = mongo_client[MONGO_DB]
 
+    # Connect Cassandra (sync, runs in asyncio thread via executor)
+    cass_cluster = Cluster(
+        contact_points=[CASSANDRA_HOST],
+        port=CASSANDRA_PORT,
+        connection_class=AsyncioConnection,
+        load_balancing_policy=DCAwareRoundRobinPolicy(local_dc="datacenter1"),
+    )
+    cass = cass_cluster.connect()
+    cass.row_factory = dict_factory
+
+    # Ensure keyspace and tables exist
+    cass.execute(f"""
+        CREATE KEYSPACE IF NOT EXISTS {CASSANDRA_KEYSPACE}
+        WITH replication = {{'class': 'NetworkTopologyStrategy', 'datacenter1': 2}}
+        AND durable_writes = true
+    """)
+    cass.set_keyspace(CASSANDRA_KEYSPACE)
+    # (Tables created by app on startup — just truncate if they exist)
+    for tbl in ["reviews", "reviews_by_business", "reviews_by_user", "comments", "comments_by_review"]:
+        try:
+            cass.execute(f"TRUNCATE {tbl}")
+        except Exception:
+            pass  # table might not exist yet
+
     print("Limpiando datos existentes...")
     await pg.execute("DELETE FROM business_hours")
     await pg.execute("DELETE FROM business_categories")
@@ -620,8 +670,8 @@ async def seed():
         business_records.append({"id": bid, "name": b["name"], "categories": b["categories"]})
     print(f"  {len(business_records)} negocios creados")
 
-    # ── Reviews ─────────────────────────────────────────────────────
-    print("Insertando resenas...")
+    # ── Reviews → Cassandra ─────────────────────────────────────────
+    print("Insertando resenas en Cassandra...")
     review_count = 0
     for biz in business_records:
         primary_cat = biz["categories"][0]
@@ -636,35 +686,62 @@ async def seed():
             ratings_sum += rating
             created = datetime.now(timezone.utc) - timedelta(days=random.randint(1, 180))
 
-            review_doc = {
-                "business_id": str(biz["id"]),
-                "user_id": str(reviewer["id"]),
-                "user_display_name": reviewer["display_name"],
-                "user_avatar_url": None,
-                "rating": rating,
-                "title": template["title"],
-                "text": template["text"],
-                "tags": template["tags"],
-                "photos": [],
-                "helpful_count": random.randint(0, 15),
-                "helpful_by": [],
-                "status": "published",
-                "owner_response": None,
-                "created_at": created,
-                "updated_at": created,
-            }
-            # Some reviews get owner responses
+            rid = uuid.uuid4()
+            biz_uuid = uuid.UUID(str(biz["id"]))
+            uid = uuid.UUID(str(reviewer["id"]))
+            helpful_count = random.randint(0, 15)
+
+            owner_resp_text = None
+            owner_resp_at = None
             if random.random() < 0.25:
                 responses = [
-                    "Muchas gracias por visitarnos y por tus amables palabras. Nos alegra que hayas disfrutado la experiencia. Te esperamos pronto!",
-                    "Agradecemos tu resena. Tu opinion es muy importante para nosotros. Trabajamos cada dia para mejorar nuestro servicio.",
-                    "Gracias por tu visita! Nos da mucho gusto saber que la pasaste bien. Te invitamos a regresar cuando quieras.",
+                    "Muchas gracias por visitarnos y por tus amables palabras.",
+                    "Agradecemos tu resena. Tu opinion es muy importante para nosotros.",
+                    "Gracias por tu visita! Te invitamos a regresar cuando quieras.",
                 ]
-                review_doc["owner_response"] = {
-                    "text": random.choice(responses),
-                    "responded_at": created + timedelta(days=random.randint(1, 5)),
-                }
-            await mongo.reviews.insert_one(review_doc)
+                owner_resp_text = random.choice(responses)
+                owner_resp_at = created + timedelta(days=random.randint(1, 5))
+
+            # reviews table (lookup by id)
+            cass.execute(
+                """INSERT INTO reviews (id, business_id, user_id, user_display_name, user_avatar_url,
+                   rating, title, body, tags, photos, helpful_count, helpful_by, status,
+                   owner_resp_text, owner_resp_at, created_at, updated_at)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (rid, biz_uuid, uid, reviewer["display_name"], None,
+                 rating, template["title"], template["text"], list(template["tags"]),
+                 [], helpful_count, set(), "published",
+                 owner_resp_text, owner_resp_at, created, created),
+            )
+
+            # reviews_by_business table
+            cass.execute(
+                """INSERT INTO reviews_by_business (business_id, created_at, id,
+                   user_id, user_display_name, user_avatar_url,
+                   rating, title, body, tags, photos, helpful_count, helpful_by, status,
+                   owner_resp_text, owner_resp_at, updated_at)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (biz_uuid, created, rid,
+                 uid, reviewer["display_name"], None,
+                 rating, template["title"], template["text"], list(template["tags"]),
+                 [], helpful_count, set(), "published",
+                 owner_resp_text, owner_resp_at, created),
+            )
+
+            # reviews_by_user table
+            cass.execute(
+                """INSERT INTO reviews_by_user (user_id, created_at, id,
+                   business_id, user_display_name, user_avatar_url,
+                   rating, title, body, tags, photos, helpful_count, helpful_by, status,
+                   owner_resp_text, owner_resp_at, updated_at)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (uid, created, rid,
+                 biz_uuid, reviewer["display_name"], None,
+                 rating, template["title"], template["text"], list(template["tags"]),
+                 [], helpful_count, set(), "published",
+                 owner_resp_text, owner_resp_at, created),
+            )
+
             review_count += 1
 
         # Update avg_rating in PostgreSQL
@@ -673,21 +750,16 @@ async def seed():
             "UPDATE businesses SET avg_rating = $1, review_count = $2 WHERE id = $3",
             avg, len(reviewers), biz["id"],
         )
-    print(f"  {review_count} resenas creadas")
+    print(f"  {review_count} resenas creadas en Cassandra")
 
-    # ── MongoDB indexes ─────────────────────────────────────────────
+    # ── MongoDB legacy indexes (kept for compatibility) ──────────────
     print("Creando indices MongoDB...")
-    await mongo.reviews.create_index([("business_id", 1), ("created_at", -1)])
-    await mongo.reviews.create_index([("user_id", 1), ("created_at", -1)])
-    await mongo.reviews.create_index([("business_id", 1), ("rating", 1)])
-    await mongo.reviews.create_index([("status", 1)])
-    await mongo.reviews.create_index([("text", "text"), ("title", "text")])
-    await mongo.comments.create_index([("review_id", 1), ("created_at", 1)])
     await mongo.user_activities.create_index([("user_id", 1), ("created_at", -1)])
     print("  Indices creados")
 
     await pg.close()
     mongo_client.close()
+    cass_cluster.shutdown()
 
     print("\n=== Seed completado ===")
     print(f"  Categorias: {len(CATEGORIES)}")

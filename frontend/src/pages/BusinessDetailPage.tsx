@@ -5,9 +5,14 @@ import { getBusiness } from '../api/businesses';
 import { getBusinessReviews, createReview, toggleHelpful } from '../api/reviews';
 import type { Business, Review } from '../types';
 import { useAuthStore } from '../stores/authStore';
+import { toast } from '../stores/toastStore';
 import ReviewCard from '../components/review/ReviewCard';
+import CommentThread from '../components/review/CommentThread';
+import BusinessMapLazy from '../components/map/BusinessMapLazy';
+import Pagination from '../components/ui/Pagination';
 
 const DAYS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
+const LIMIT = 10;
 
 function InteractiveStars({ rating, onChange }: { rating: number; onChange: (r: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -57,6 +62,9 @@ export default function BusinessDetailPage() {
   const { user } = useAuthStore();
   const [business, setBusiness] = useState<Business | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newTitle, setNewTitle] = useState('');
@@ -64,16 +72,37 @@ export default function BusinessDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const loadReviews = async (pageNum: number) => {
+    if (!id) return;
+    setReviewsLoading(true);
+    try {
+      const res = await getBusinessReviews(id, { page: pageNum, limit: LIMIT });
+      setReviews(res.items);
+      setTotal(res.total);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!id) return;
     Promise.all([
       getBusiness(id),
-      getBusinessReviews(id).then((res) => res.items),
-    ]).then(([biz, revs]) => {
+      getBusinessReviews(id, { page: 1, limit: LIMIT }),
+    ]).then(([biz, revRes]) => {
       setBusiness(biz);
-      setReviews(revs);
+      setReviews(revRes.items);
+      setTotal(revRes.total);
+    }).catch(() => {
+      toast.error('Error al cargar el negocio');
     }).finally(() => setLoading(false));
   }, [id]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    loadReviews(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,18 +116,26 @@ export default function BusinessDetailPage() {
         text: newText,
       });
       setReviews([review, ...reviews]);
+      setTotal((t) => t + 1);
       setShowForm(false);
       setNewTitle('');
       setNewText('');
       setNewRating(5);
+      toast.success('Resena publicada exitosamente');
+    } catch {
+      toast.error('Error al publicar la resena');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleHelpful = async (reviewId: string) => {
-    const updated = await toggleHelpful(reviewId);
-    setReviews(reviews.map((r) => (r.id === reviewId ? updated : r)));
+    try {
+      const updated = await toggleHelpful(reviewId);
+      setReviews(reviews.map((r) => (r.id === reviewId ? updated : r)));
+    } catch {
+      toast.error('Debes iniciar sesion para votar');
+    }
   };
 
   if (loading) {
@@ -123,11 +160,12 @@ export default function BusinessDetailPage() {
     </div>
   );
 
-  // Rating distribution
   const dist = [5, 4, 3, 2, 1].map((s) => ({
     star: s,
     count: reviews.filter((r) => r.rating === s).length,
   }));
+
+  const hasLocation = business.latitude != null && business.longitude != null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -166,14 +204,12 @@ export default function BusinessDetailPage() {
                 <MapPin className="w-20 h-20 text-indigo-200" />
               </div>
             )}
-            {/* Share button */}
             <button className="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-600 hover:bg-white transition shadow-sm">
               <Share2 className="w-4 h-4" />
             </button>
           </div>
 
           <div className="p-6">
-            {/* Name + categories */}
             <div className="flex flex-wrap gap-2 mb-3">
               {business.categories.map((c) => (
                 <span key={c.id} className="bg-indigo-50 text-indigo-700 text-xs px-3 py-1 rounded-full font-semibold">
@@ -188,7 +224,6 @@ export default function BusinessDetailPage() {
             </div>
             <h1 className="text-3xl font-extrabold text-gray-900">{business.name}</h1>
 
-            {/* Rating row */}
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="text-2xl font-bold text-gray-900">{business.avg_rating.toFixed(1)}</span>
@@ -214,7 +249,6 @@ export default function BusinessDetailPage() {
               <p className="text-gray-600 mt-4 leading-relaxed">{business.description}</p>
             )}
 
-            {/* Info grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 pt-6 border-t border-gray-100">
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Informacion</h3>
@@ -270,6 +304,17 @@ export default function BusinessDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Mini mapa */}
+            {hasLocation && (
+              <div className="mt-6 pt-6 border-t border-gray-100">
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  Ubicacion en el mapa
+                </h3>
+                <BusinessMapLazy businesses={[business]} height={200} single />
+              </div>
+            )}
           </div>
         </div>
 
@@ -313,7 +358,7 @@ export default function BusinessDetailPage() {
           <div className={reviews.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">
-                Resenas <span className="text-gray-400 font-normal text-base">({reviews.length})</span>
+                Resenas <span className="text-gray-400 font-normal text-base">({total})</span>
               </h2>
               {user && reviews.length === 0 && (
                 <button
@@ -376,12 +421,40 @@ export default function BusinessDetailPage() {
               </form>
             )}
 
-            {/* Review cards */}
+            {/* Review cards with comments */}
             <div className="space-y-4">
-              {reviews.map((review) => (
-                <ReviewCard key={review.id} review={review} onHelpful={handleHelpful} />
+              {reviewsLoading && (
+                <div className="space-y-4">
+                  {[1,2,3].map((i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse shadow-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3.5 bg-gray-200 rounded w-28" />
+                          <div className="h-3 bg-gray-200 rounded w-20" />
+                        </div>
+                        <div className="flex gap-0.5">
+                          {[1,2,3,4,5].map((s) => <div key={s} className="w-4 h-4 bg-gray-200 rounded" />)}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-gray-200 rounded w-full" />
+                        <div className="h-3 bg-gray-200 rounded w-4/5" />
+                        <div className="h-3 bg-gray-200 rounded w-3/5" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!reviewsLoading && reviews.map((review) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  onHelpful={handleHelpful}
+                  extra={<CommentThread reviewId={review.id} />}
+                />
               ))}
-              {reviews.length === 0 && !showForm && (
+              {!reviewsLoading && reviews.length === 0 && !showForm && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center shadow-sm">
                   <Star className="w-10 h-10 text-gray-200 mx-auto mb-3" />
                   <p className="font-semibold text-gray-500 mb-1">Sin resenas aun</p>
@@ -397,6 +470,9 @@ export default function BusinessDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Paginacion de resenas */}
+            <Pagination page={page} total={total} limit={LIMIT} onChange={handlePageChange} />
           </div>
         </div>
       </div>

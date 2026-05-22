@@ -1,252 +1,264 @@
 # LocalReview
 
-Plataforma colaborativa web para buscar, evaluar y comentar negocios locales en El Salvador. Los usuarios pueden descubrir restaurantes, cafeterias, pupuserias, lugares turisticos y mas, basandose en resenas autenticas de la comunidad.
-
-## Desarrollado por
-
-**Jonny Quintanilla**
+Plataforma de reseñas de negocios locales para El Salvador.  
+Desarrollada con FastAPI + React 19/TypeScript + PostgreSQL/PostGIS + **Apache Cassandra** + Redis.
 
 ---
 
-## Caracteristicas
-
-- Busqueda de negocios por nombre, categoria, ubicacion y calificacion
-- Sistema de resenas con calificacion por estrellas, etiquetas y fotos
-- Hilos de comentarios en resenas
-- Votos "util" en resenas
-- Respuestas de propietarios de negocios
-- Dashboard para duenos de negocios con metricas y resenas recientes
-- Busqueda geoespacial por radio usando PostGIS
-- Cache de resultados con Redis
-- Datos reales de negocios en El Salvador
-
-## Stack Tecnologico
-
-### Backend
-| Tecnologia | Uso |
-|---|---|
-| **FastAPI** | Framework web async |
-| **PostgreSQL + PostGIS** | Datos estructurados + busqueda geoespacial |
-| **MongoDB** | Resenas, comentarios, actividad de usuarios |
-| **Redis** | Cache de endpoints de lectura |
-| **SQLAlchemy 2.0** | ORM async para PostgreSQL |
-| **Motor** | Driver async para MongoDB |
-| **Alembic** | Migraciones de base de datos |
-| **JWT** | Autenticacion con access + refresh tokens |
-| **Celery** | Tareas en background (sincronizacion de ratings) |
-
-### Frontend
-| Tecnologia | Uso |
-|---|---|
-| **React 18 + TypeScript** | Interfaz de usuario |
-| **Vite** | Build tool |
-| **Tailwind CSS** | Estilos |
-| **Zustand** | Estado global (auth) |
-| **React Router v6** | Navegacion |
-| **Axios** | Cliente HTTP con interceptor JWT |
-| **Lucide React** | Iconos |
-
-### Infraestructura
-| Tecnologia | Uso |
-|---|---|
-| **Docker Compose** | Orquestacion de servicios de DB |
-
-## Arquitectura de Base de Datos
-
-El proyecto usa una arquitectura **poliglota** (multi-DB) donde cada tecnologia se usa segun sus fortalezas:
-
-```
-PostgreSQL (datos estructurados)        MongoDB (datos semi-estructurados)
-├── users                               ├── reviews
-├── businesses + PostGIS                ├── comments
-├── categories                          └── user_activities
-└── business_hours
-
-Redis (cache)
-├── business:detail:{id}   (TTL 10min)
-├── search:results:{hash}  (TTL 2min)
-└── session:{user_id}      (TTL 7d)
-```
-
-## Estructura del Proyecto
-
-```
-LocalReview/
-├── docker-compose.yml         # PostgreSQL+PostGIS, MongoDB, Redis
-├── .env.example               # Variables de entorno de ejemplo
-├── start.ps1                  # Script para iniciar todos los servicios
-├── stop.ps1                   # Script para detener todos los servicios
-│
-├── backend/
-│   ├── app/
-│   │   ├── main.py            # Entry point FastAPI
-│   │   ├── config.py          # Configuracion via pydantic-settings
-│   │   ├── dependencies.py    # Dependencias compartidas (auth, roles)
-│   │   ├── auth/              # Register, login, JWT
-│   │   ├── users/             # Perfiles de usuario
-│   │   ├── businesses/        # CRUD de negocios + PostGIS
-│   │   ├── reviews/           # CRUD de resenas (MongoDB)
-│   │   ├── comments/          # Hilos de comentarios (MongoDB)
-│   │   ├── search/            # Busqueda geo + filtros + cache
-│   │   ├── photos/            # Upload y procesamiento de fotos
-│   │   ├── dashboard/         # Panel para propietarios
-│   │   ├── sync/              # Sincronizacion entre PostgreSQL y MongoDB
-│   │   └── db/                # Conexiones a PostgreSQL, MongoDB, Redis
-│   ├── alembic/               # Migraciones de base de datos
-│   └── scripts/
-│       └── seed.py            # Datos de ejemplo (negocios reales de El Salvador)
-│
-└── frontend/
-    └── src/
-        ├── api/               # Cliente API con interceptor JWT
-        ├── components/        # Header, BusinessCard, ReviewCard, StarRating
-        ├── pages/             # Home, Search, BusinessDetail, Profile, Dashboard
-        ├── stores/            # Auth store (Zustand)
-        └── types/             # Interfaces TypeScript
-```
-
-## Instalacion y Uso
+## Inicio rápido
 
 ### Requisitos previos
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Python 3.12+](https://www.python.org/)
-- [Node.js 18+](https://nodejs.org/)
+- Docker Desktop
+- Python 3.12+
+- Node.js 20+
 
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/tu-usuario/localreview.git
-cd localreview
-```
-
-### 2. Configurar variables de entorno
-
-```bash
-cp .env.example .env
-```
-
-Edita `.env` con tus valores (o usa los defaults para desarrollo local).
-
-### 3. Levantar las bases de datos
+### 1. Levantar servicios
 
 ```powershell
+cd C:\Users\Jonny Quintanilla\Desktop\localreview-main
+
+# Inicia PostgreSQL, MongoDB, Redis y el cluster Cassandra de 2 nodos
+# Cassandra tarda ~2 minutos en estar lista la primera vez
 docker compose up -d
+
+# Verificar estado
+docker compose ps
 ```
 
-### 4. Instalar dependencias del backend
+### 2. Backend
 
 ```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install -r requirements.txt   # o: pip install -e .
-```
+pip install -r requirements.txt
 
-### 5. Correr migraciones y seed
-
-```powershell
-# Habilitar extensiones PostGIS (primera vez)
-python -c "import asyncio, asyncpg; asyncio.run(asyncpg.connect('postgresql://localreview:localreview_dev@localhost:5432/localreview', ssl=False).then(lambda c: c.execute('CREATE EXTENSION IF NOT EXISTS postgis')))"
-
-# Migraciones
+# Migraciones PostgreSQL
 alembic upgrade head
 
-# Datos de ejemplo (negocios reales de El Salvador)
+# Seed de datos de prueba
 python scripts/seed.py
-```
 
-### 6. Instalar dependencias del frontend
-
-```powershell
-cd ..\frontend
-npm install
-```
-
-### 7. Iniciar todo
-
-**Opcion rapida (PowerShell):**
-```powershell
-.\start.ps1
-```
-
-**Manual:**
-```powershell
-# Terminal 1 - Backend
-cd backend
-.\.venv\Scripts\activate
+# Iniciar API
 uvicorn app.main:app --reload
+```
 
-# Terminal 2 - Frontend
+Documentación interactiva → http://localhost:8000/docs
+
+### 3. Frontend
+
+```powershell
 cd frontend
+npm install
 npm run dev
 ```
 
-### 8. Acceder a la aplicacion
+App → http://localhost:5173
 
-| Servicio | URL |
-|---|---|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:8000 |
-| API Docs (Swagger) | http://localhost:8000/docs |
+### Credenciales de prueba
 
-## Cuentas de prueba
-
-| Rol | Email | Password |
-|---|---|---|
+| Rol | Email | Contraseña |
+|-----|-------|-----------|
 | Usuario | maria.lopez@email.com | password123 |
-| Business Owner | owner@localreview.sv | password123 |
+| Dueño | owner@localreview.sv | password123 |
 | Admin | admin@localreview.sv | password123 |
+
+---
+
+## Arquitectura de bases de datos
+
+| Base de datos | Uso |
+|---|---|
+| **PostgreSQL** | Usuarios, negocios, sesiones (datos estructurados relacionales) |
+| **Cassandra** | Reseñas y comentarios (escritura masiva, paginación nativa) |
+| Redis | Caché y sesiones JWT |
+| MongoDB | Legado (mantenido en docker-compose, no usado en producción) |
+
+### Cluster Cassandra — 2 nodos
+
+```
+cassandra1 (seed)  →  localhost:9042
+cassandra2         →  se une automáticamente al cluster
+```
+
+- Keyspace: `localreview`
+- Replicación: `NetworkTopologyStrategy`, `RF = 2` (copia en ambos nodos)
+- Schema CQL → [`backend/cassandra/init.cql`](backend/cassandra/init.cql)
+
+---
 
 ## API Endpoints
 
+### Autenticación
+
+| Método | Ruta | Descripción | Auth requerida |
+|--------|------|-------------|---------------|
+| `POST` | `/api/v1/auth/login` | Login — retorna `access_token` y `refresh_token` | No |
+| `POST` | `/api/v1/auth/register` | Registro de nuevo usuario | No |
+| `POST` | `/api/v1/auth/refresh` | Renovar access token | No |
+| `GET`  | `/api/v1/auth/me` | Perfil del usuario autenticado | ✅ Bearer |
+
+### Negocios
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|------|
+| `GET`    | `/api/v1/businesses` | Lista paginada (`?page&limit&category`) | No |
+| `GET`    | `/api/v1/businesses/{id}` | Detalle de un negocio | No |
+| `POST`   | `/api/v1/businesses` | Crear negocio | `business_owner` |
+| `PATCH`  | `/api/v1/businesses/{id}` | Actualizar negocio | `business_owner` |
+| `DELETE` | `/api/v1/businesses/{id}` | Eliminar negocio | `admin` |
+
+### Reseñas *(almacenadas en Cassandra)*
+
+| Método | Ruta | Descripción | Auth | Paginación |
+|--------|------|-------------|------|-----------|
+| `POST`   | `/api/v1/reviews` | Crear reseña | ✅ Bearer | — |
+| `GET`    | `/api/v1/reviews/business/{id}` | Reseñas de un negocio | No | `?page=1&limit=20&sort=newest` |
+| `GET`    | `/api/v1/reviews/user/{id}` | Reseñas de un usuario | No | `?page=1&limit=20` |
+| `GET`    | `/api/v1/reviews/{review_id}` | Detalle de una reseña | No | — |
+| `PATCH`  | `/api/v1/reviews/{review_id}` | Actualizar reseña | Autor / Admin | — |
+| `DELETE` | `/api/v1/reviews/{review_id}` | Eliminar reseña | Autor / Admin | — |
+| `POST`   | `/api/v1/reviews/{review_id}/helpful` | Votar como útil | ✅ Bearer | — |
+| `POST`   | `/api/v1/reviews/{review_id}/respond` | Respuesta del dueño | `business_owner` | — |
+
+**Parámetros de paginación:**
+
+| Parámetro | Tipo | Default | Descripción |
+|-----------|------|---------|-------------|
+| `page`  | int | 1  | Número de página |
+| `limit` | int | 20 | Resultados por página (máx 100) |
+| `sort`  | str | `newest` | `newest` \| `oldest` \| `highest` \| `lowest` \| `helpful` |
+
+**Ejemplo de respuesta paginada:**
+```json
+{
+  "items": [ { "id": "...", "rating": 5, "text": "Excelente!" } ],
+  "total": 42,
+  "page":  1,
+  "limit": 20
+}
 ```
-POST   /api/v1/auth/register
-POST   /api/v1/auth/login
-POST   /api/v1/auth/refresh
 
-GET    /api/v1/users/me
-PATCH  /api/v1/users/me
-GET    /api/v1/users/{id}
+### Comentarios *(almacenados en Cassandra)*
 
-GET    /api/v1/businesses
-POST   /api/v1/businesses
-GET    /api/v1/businesses/{id}
-PATCH  /api/v1/businesses/{id}
-GET    /api/v1/businesses/categories
+| Método | Ruta | Descripción | Auth | Paginación |
+|--------|------|-------------|------|-----------|
+| `GET`    | `/api/v1/reviews/{review_id}/comments` | Listar comentarios | No | `?page=1&limit=20` |
+| `POST`   | `/api/v1/reviews/{review_id}/comments` | Agregar comentario | ✅ Bearer | — |
+| `PATCH`  | `/api/v1/comments/{comment_id}` | Editar comentario | Autor / Admin | — |
+| `DELETE` | `/api/v1/comments/{comment_id}` | Eliminar comentario | Autor / Admin | — |
 
-POST   /api/v1/reviews
-GET    /api/v1/reviews/{id}
-GET    /api/v1/reviews/business/{business_id}
-GET    /api/v1/reviews/user/{user_id}
-PATCH  /api/v1/reviews/{id}
-DELETE /api/v1/reviews/{id}
-POST   /api/v1/reviews/{id}/helpful
-POST   /api/v1/reviews/{id}/respond
+### Dashboard *(solo `business_owner`)*
 
-POST   /api/v1/reviews/{id}/comments
-GET    /api/v1/reviews/{id}/comments
-PATCH  /api/v1/comments/{id}
-DELETE /api/v1/comments/{id}
+| Método | Ruta | Descripción | Paginación |
+|--------|------|-------------|-----------|
+| `GET` | `/api/v1/dashboard/stats` | Estadísticas de SOLO los negocios propios | — |
+| `GET` | `/api/v1/dashboard/reviews` | Reseñas de negocios propios | `?page&limit&business_id` |
 
-GET    /api/v1/search?q=&lat=&lng=&radius=&category_id=&min_rating=&price_level=&sort=
+### Búsqueda y Fotos
 
-POST   /api/v1/photos/upload
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|------|
+| `GET`  | `/api/v1/search` | Búsqueda por texto, categoría, rating, ubicación | No |
+| `POST` | `/api/v1/photos/upload` | Subir foto (vincula a reseña con `review_id`) | ✅ Bearer |
+| `GET`  | `/api/v1/health` | Estado del servidor | No |
 
-GET    /api/v1/dashboard/stats
-GET    /api/v1/dashboard/reviews
+---
+
+## Cassandra — Distribución de datos
+
+### Verificar estado del cluster
+
+```bash
+# Estado y token ranges de cada nodo
+docker exec localreview-cassandra1 nodetool status
+
+# Distribución del keyspace
+docker exec localreview-cassandra1 nodetool describering localreview
+
+# CQL interactivo
+docker exec -it localreview-cassandra1 cqlsh
+USE localreview;
+DESCRIBE tables;
+SELECT business_id, rating, user_display_name FROM reviews_by_business LIMIT 10;
 ```
 
-## Datos de El Salvador incluidos
+### Tablas y estrategia de partición
 
-El seed incluye 27 negocios reales distribuidos en:
+| Tabla | Partition Key | Clustering | Propósito |
+|-------|--------------|------------|-----------|
+| `reviews` | `id` | — | Lookup por ID de reseña |
+| `reviews_by_business` | `business_id` | `created_at DESC, id` | Listar reseñas de un negocio |
+| `reviews_by_user` | `user_id` | `created_at DESC, id` | Listar reseñas de un usuario |
+| `comments` | `id` | — | Lookup por ID de comentario |
+| `comments_by_review` | `review_id` | `created_at ASC, id` | Listar comentarios de una reseña |
 
-- **San Salvador**: Los Cebollines, Tipicos Margoth, La Pampa Argentina, Viva Espresso, Ben's Coffee, Cafe San Martin, Pupuseria Lily, La Alquimia Cerveceria, Super Selectos Escalon, Farmacia San Nicolas, World Gym, Armando Funes Salon, Pollo Campero, Hospital de Diagnostico, Pan Lido, Tony Roma's, El Sopon Tipico
-- **La Libertad**: La Marea, El Delfin Marisqueria, Playa El Tunco, Pupuseria La Cuscatleca
-- **Sonsonate**: Hotel Decameron Salinitas, Ruta de las Flores
-- **Santa Ana**: Lago de Coatepeque
-- **Ahuachapan**: Parque Nacional El Imposible
-- **Antiguo Cuscatlan**: iStore El Salvador, Multiplaza
+---
 
-## Licencia
+## Backup y Recuperación
 
-MIT — Jonny Quintanilla
+### Backup manual con nodetool (SSTables)
+
+```powershell
+# Snapshot en ambos nodos con timestamp automático
+.\backend\scripts\backup\manual_backup.ps1
+
+# Con tag personalizado
+.\backend\scripts\backup\manual_backup.ps1 -tag "antes_deploy_v2"
+
+# Listar snapshots existentes
+docker exec localreview-cassandra1 nodetool listsnapshots
+```
+
+### Herramienta de terceros — Export JSON
+
+```powershell
+cd backend
+
+# Exportar todas las tablas a archivos JSONL
+.venv\Scripts\python scripts\backup\third_party_backup.py --output ..\backups\cassandra
+
+# Ver todas las opciones
+.venv\Scripts\python scripts\backup\third_party_backup.py --help
+```
+
+### Restaurar
+
+```powershell
+# Restaurar desde snapshot nodetool
+.\backend\scripts\backup\restore_backup.ps1 -tag "antes_deploy_v2"
+
+# Restaurar desde export JSON
+cd backend
+.venv\Scripts\python scripts\backup\third_party_backup.py --restore --input ..\backups\cassandra\2026-05-22T12-00-00
+```
+
+---
+
+## Tests
+
+```powershell
+cd backend
+
+# Todos los tests con verbose
+.venv\Scripts\pytest tests/ -v
+
+# Con reporte de cobertura
+.venv\Scripts\pytest tests/ --cov=app --cov-report=term-missing
+
+# Un archivo específico
+.venv\Scripts\pytest tests/test_dashboard.py -v
+.venv\Scripts\pytest tests/test_comments.py -v
+```
+
+---
+
+## Bugs corregidos (Fase 1)
+
+| # | Severidad | Bug | Fix |
+|---|-----------|-----|-----|
+| 1 | 🔴 SEGURIDAD | Dashboard mostraba datos de **todos** los negocios | Filtro por `owner_id` en PostgreSQL antes de consultar Cassandra |
+| 2 | 🔴 DATOS | `avg_rating` nunca se recalculaba | `BackgroundTasks` llama a `_recalculate_rating` tras cada cambio |
+| 3 | 🟡 UX | País por defecto era `"MX"` | Cambiado a `"SV"` en model y schema |
+| 4 | 🟡 FUNC | Fotos no se vinculaban a la reseña | `push_photo_to_review()` actualiza la lista en Cassandra |
+| 5 | 🟡 ESCALA | Comentarios retornaban lista plana con límite 500 | Paginación `{items, total, page, limit}` con Cassandra |

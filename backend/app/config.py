@@ -9,9 +9,14 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "localreview"
     POSTGRES_PASSWORD: str = "localreview_dev"
 
-    # MongoDB
+    # MongoDB (kept for legacy; reviews/comments now live in Cassandra)
     MONGODB_URL: str = "mongodb://localhost:27017"
     MONGODB_DB: str = "localreview"
+
+    # Cassandra
+    CASSANDRA_HOSTS: list[str] = ["localhost"]
+    CASSANDRA_KEYSPACE: str = "localreview"
+    CASSANDRA_PORT: int = 9042
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
@@ -30,8 +35,10 @@ class Settings(BaseSettings):
 
     @property
     def postgres_url(self) -> str:
+        # Use psycopg3 (postgresql+psycopg) which supports Python 3.14+
+        # asyncpg has incompatibilities with Python 3.14 on Windows
         return (
-            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 

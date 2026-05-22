@@ -25,3 +25,12 @@ export async function addComment(reviewId: string, text: string): Promise<Commen
   const { data } = await api.post(`/reviews/${reviewId}/comments`, { text });
   return data;
 }
+
+export async function respondToReview(reviewId: string, text: string): Promise<Review> {
+  const { data } = await api.post(`/reviews/${reviewId}/respond`, { text });
+  return data;
+}
+
+export async function deleteReview(reviewId: string): Promise<void> {
+  await api.delete(`/reviews/${reviewId}`);
+}

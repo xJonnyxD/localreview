@@ -20,3 +20,8 @@ export async function searchBusinesses(params: Record<string, string | number>):
   const { data } = await api.get('/search', { params });
   return data;
 }
+
+export async function createBusiness(payload: Record<string, unknown>): Promise<Business> {
+  const { data } = await api.post('/businesses', payload);
+  return data;
+}

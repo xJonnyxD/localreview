@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: localreview
       POSTGRES_PASSWORD: localreview_dev
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -43,7 +43,52 @@ services:
       timeout: 5s
       retries: 5
 
+  # ─── Cassandra cluster (2 nodes) ────────────────────────────────────────────
+  cassandra1:
+    image: cassandra:4.1
+    container_name: localreview-cassandra1
+    environment:
+      CASSANDRA_CLUSTER_NAME: LocalReviewCluster
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+      HEAP_NEWSIZE: 128M
+      MAX_HEAP_SIZE: 512M
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra1_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e \"describe keyspaces\" 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 15
+      start_period: 90s
+
+  cassandra2:
+    image: cassandra:4.1
+    container_name: localreview-cassandra2
+    environment:
+      CASSANDRA_CLUSTER_NAME: LocalReviewCluster
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_SEEDS: cassandra1
+      HEAP_NEWSIZE: 128M
+      MAX_HEAP_SIZE: 512M
+    depends_on:
+      cassandra1:
+        condition: service_healthy
+    volumes:
+      - cassandra2_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e \"describe keyspaces\" 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 15
+      start_period: 120s
+
 volumes:
   postgres_data:
   mongo_data:
   redis_data:
+  cassandra1_data:
+  cassandra2_data:
