@@ -9,9 +9,23 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-/* Mejor tap target en móvil para botones pequeños */
+/* Mejor tap target en móvil */
 @media (max-width: 640px) {
   button, a {
     -webkit-tap-highlight-color: transparent;
   }
+}
+
+/* Animación de entrada para toasts */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* Línea de corte para textos largos en mobile */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

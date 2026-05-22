@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { MapPin, Search, User, LogOut, LayoutDashboard, Menu, X, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
@@ -9,6 +9,20 @@ export default function Header() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Cerrar menú móvil al cambiar de ruta
+  useEffect(() => {
+    setMobileOpen(false);
+    setUserMenuOpen(false);
+  }, [location.pathname]);
+
+  // Cerrar menú móvil al hacer scroll
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onScroll = () => setMobileOpen(false);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [mobileOpen]);
 
   const handleLogout = () => {
     logout();
