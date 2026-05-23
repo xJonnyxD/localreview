@@ -1,9 +1,6 @@
-# Fix for Python 3.14+ on Windows: ProactorEventLoop is incompatible with
-# psycopg3 async and asyncpg. Force SelectorEventLoop before any async code runs.
 import sys
 if sys.platform == "win32":
     import asyncio
-    import selectors
     asyncio.set_event_loop_policy(  # type: ignore[attr-defined]
         asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore[attr-defined]
     )
@@ -20,8 +17,6 @@ from app.businesses.router import router as businesses_router
 from app.comments.router import router as comments_router
 from app.dashboard.router import router as dashboard_router
 from app.db.cassandra import close_cassandra, connect_cassandra
-from app.db.mongodb import close_mongodb, connect_mongodb
-from app.db.redis import close_redis, connect_redis
 from app.photos.router import router as photos_router
 from app.reviews.router import router as reviews_router
 from app.search.router import router as search_router
@@ -30,13 +25,9 @@ from app.users.router import router as users_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await connect_mongodb()
-    await connect_redis()
     await connect_cassandra()
     yield
     await close_cassandra()
-    await close_mongodb()
-    await close_redis()
 
 
 app = FastAPI(

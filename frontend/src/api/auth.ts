@@ -1,8 +1,13 @@
 import api from './client';
 import type { TokenResponse, User } from '../types';
 
-export async function register(email: string, password: string, display_name: string): Promise<User> {
-  const { data } = await api.post('/auth/register', { email, password, display_name });
+export async function register(
+  email: string,
+  password: string,
+  display_name: string,
+  is_business_owner = false,
+): Promise<User> {
+  const { data } = await api.post('/auth/register', { email, password, display_name, is_business_owner });
   return data;
 }
 

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, time
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -16,16 +16,16 @@ class CategoryResponse(BaseModel):
 
 class BusinessHoursCreate(BaseModel):
     day_of_week: int
-    open_time: time
-    close_time: time
+    open_time: str   # "HH:MM"
+    close_time: str  # "HH:MM"
     is_closed: bool = False
 
 
 class BusinessHoursResponse(BaseModel):
     id: int
     day_of_week: int
-    open_time: time
-    close_time: time
+    open_time: str
+    close_time: str
     is_closed: bool
 
     model_config = {"from_attributes": True}
@@ -47,6 +47,7 @@ class BusinessCreate(BaseModel):
     price_level: int | None = None
     category_ids: list[int] = []
     hours: list[BusinessHoursCreate] = []
+    photo_url: str | None = None
 
 
 class BusinessUpdate(BaseModel):
@@ -63,6 +64,8 @@ class BusinessUpdate(BaseModel):
     longitude: float | None = None
     price_level: int | None = None
     category_ids: list[int] | None = None
+    photo_url: str | None = None
+    hours: list[BusinessHoursCreate] | None = None
 
 
 class BusinessResponse(BaseModel):

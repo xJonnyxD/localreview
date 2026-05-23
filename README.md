@@ -1,264 +1,282 @@
-# LocalReview
+<div align="center">
 
-Plataforma de reseñas de negocios locales para El Salvador.  
-Desarrollada con FastAPI + React 19/TypeScript + PostgreSQL/PostGIS + **Apache Cassandra** + Redis.
+# 🏪 LocalReview
+
+**Plataforma de reseñas de negocios locales para El Salvador**
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![Cassandra](https://img.shields.io/badge/Cassandra-4.1-1287B1?style=flat-square&logo=apache-cassandra)](https://cassandra.apache.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](https://www.docker.com)
+
+[Demo](#) · [Documentación API](http://localhost:8000/docs) · [Reportar Bug](#)
+
+</div>
 
 ---
 
-## Inicio rápido
+## ✨ Características
 
-### Requisitos previos
-- Docker Desktop
-- Python 3.12+
-- Node.js 20+
+- 🔐 **Autenticación JWT** — Registro, login, roles diferenciados (usuario / dueño / admin)
+- 🏬 **Gestión de Negocios** — Crear, editar, fotos, horarios por día, categorías
+- ⭐ **Sistema de Reseñas** — Calificación 1-5, votos útiles, respuesta del dueño
+- 💬 **Comentarios** — Hilos por reseña con paginación
+- 📊 **Dashboard** — Estadísticas en tiempo real para dueños de negocio
+- 🔍 **Búsqueda Avanzada** — Por texto, categoría, ciudad, calificación
+- 📸 **Subida de Fotos** — Para negocios y reseñas
+- 🗺️ **Geolocalización** — Coordenadas lat/lng con centro en San Salvador
 
-### 1. Levantar servicios
+---
 
-```powershell
-cd C:\Users\Jonny Quintanilla\Desktop\localreview-main
+## 🛠️ Stack Tecnológico
 
-# Inicia PostgreSQL, MongoDB, Redis y el cluster Cassandra de 2 nodos
-# Cassandra tarda ~2 minutos en estar lista la primera vez
-docker compose up -d
+| Capa | Tecnología |
+|------|-----------|
+| **Backend** | Python 3.12 + FastAPI |
+| **Base de Datos** | Apache Cassandra 4.1 (cluster 2 nodos) |
+| **Frontend** | React 19 + TypeScript + Vite |
+| **Estilos** | Tailwind CSS |
+| **Estado** | Zustand |
+| **Auth** | JWT (python-jose + passlib/bcrypt) |
+| **Infra** | Docker Compose |
 
-# Verificar estado
-docker compose ps
+---
+
+## 🚀 Inicio Rápido
+
+### Requisitos
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Python 3.12+](https://www.python.org/downloads/)
+- [Node.js 20+](https://nodejs.org/)
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/xJonnyxD/LocalReview.git
+cd LocalReview
 ```
 
-### 2. Backend
+### 2. Configurar variables de entorno
 
-```powershell
+```bash
+cp .env.example .env
+```
+
+El archivo `.env` por defecto funciona para desarrollo local:
+
+```env
+CASSANDRA_HOSTS=localhost
+CASSANDRA_KEYSPACE=localreview
+CASSANDRA_PORT=9042
+JWT_SECRET_KEY=localreview-dev-secret-change-in-production
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+DEBUG=True
+CORS_ORIGINS=["http://localhost:5173"]
+UPLOAD_DIR=./uploads
+```
+
+### 3. Levantar la base de datos
+
+```bash
+docker compose up -d
+```
+
+> ⏳ Espera ~30 segundos para que Cassandra inicialice el cluster de 2 nodos.
+
+### 4. Configurar el backend
+
+```bash
 cd backend
+
+# Crear entorno virtual
 python -m venv .venv
+
+# Activar (Windows)
 .\.venv\Scripts\activate
+
+# Instalar dependencias
 pip install -r requirements.txt
 
-# Migraciones PostgreSQL
-alembic upgrade head
-
-# Seed de datos de prueba
+# Poblar base de datos con datos de prueba
 python scripts/seed.py
 
-# Iniciar API
-uvicorn app.main:app --reload
+# Iniciar servidor
+python -m uvicorn app.main:app --reload
 ```
 
-Documentación interactiva → http://localhost:8000/docs
+✅ API disponible en → http://localhost:8000  
+📚 Documentación Swagger → http://localhost:8000/docs
 
-### 3. Frontend
+### 5. Configurar el frontend
 
-```powershell
+```bash
+# En otra terminal
 cd frontend
 npm install
 npm run dev
 ```
 
-App → http://localhost:5173
+✅ App disponible en → http://localhost:5173
 
-### Credenciales de prueba
+---
+
+## 👥 Cuentas de Prueba
 
 | Rol | Email | Contraseña |
 |-----|-------|-----------|
-| Usuario | maria.lopez@email.com | password123 |
-| Dueño | owner@localreview.sv | password123 |
-| Admin | admin@localreview.sv | password123 |
+| 👤 Usuario | `maria.lopez@email.com` | `password123` |
+| 🏬 Dueño | `owner@localreview.sv` | `password123` |
+| 🛡️ Admin | `admin@localreview.sv` | `password123` |
 
 ---
 
-## Arquitectura de bases de datos
+## 🏗️ Arquitectura
 
-| Base de datos | Uso |
-|---|---|
-| **PostgreSQL** | Usuarios, negocios, sesiones (datos estructurados relacionales) |
-| **Cassandra** | Reseñas y comentarios (escritura masiva, paginación nativa) |
-| Redis | Caché y sesiones JWT |
-| MongoDB | Legado (mantenido en docker-compose, no usado en producción) |
+```
+localreview/
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # FastAPI app + lifespan
+│   │   ├── models.py            # Dataclasses: User, Business, Category
+│   │   ├── db/
+│   │   │   └── cassandra.py     # Conexión y helpers Cassandra
+│   │   ├── auth/                # JWT, registro, login
+│   │   ├── businesses/          # CRUD negocios
+│   │   ├── reviews/             # Sistema de reseñas
+│   │   ├── comments/            # Comentarios paginados
+│   │   ├── dashboard/           # Stats del dueño
+│   │   ├── photos/              # Upload de imágenes
+│   │   ├── search/              # Búsqueda avanzada
+│   │   └── sync/                # Recálculo de avg_rating
+│   └── scripts/
+│       └── seed.py              # Datos de prueba
+├── frontend/
+│   ├── src/
+│   │   ├── api/                 # Clientes HTTP (axios)
+│   │   ├── stores/              # Estado global (Zustand)
+│   │   ├── pages/               # Vistas principales
+│   │   └── components/          # Componentes reutilizables
+├── docker-compose.yml
+└── .env.example
+```
 
-### Cluster Cassandra — 2 nodos
+### Base de Datos — Apache Cassandra
+
+El proyecto usa **Cassandra como única base de datos**, con tablas desnormalizadas optimizadas para cada patrón de consulta:
+
+| Tabla | Partition Key | Propósito |
+|-------|--------------|-----------|
+| `users` | `id` | Lookup por UUID |
+| `users_by_email` | `email` | Login / verificación |
+| `businesses` | `id` | Detalle de negocio |
+| `businesses_by_slug` | `slug` | URL amigable |
+| `businesses_by_owner` | `owner_id` | Dashboard del dueño |
+| `reviews` | `id` | Detalle de reseña |
+| `reviews_by_business` | `business_id` | Feed de un negocio |
+| `reviews_by_user` | `user_id` | Historial de usuario |
+| `comments` | `id` | Detalle de comentario |
+| `comments_by_review` | `review_id` | Hilo de comentarios |
+| `categories` | `id` | Catálogo de categorías |
+
+### Cluster Cassandra — 2 Nodos
 
 ```
 cassandra1 (seed)  →  localhost:9042
-cassandra2         →  se une automáticamente al cluster
+cassandra2         →  replica automática
 ```
 
-- Keyspace: `localreview`
-- Replicación: `NetworkTopologyStrategy`, `RF = 2` (copia en ambos nodos)
-- Schema CQL → [`backend/cassandra/init.cql`](backend/cassandra/init.cql)
+- **Keyspace:** `localreview`
+- **Replicación:** `NetworkTopologyStrategy`, RF = 2
 
 ---
 
-## API Endpoints
+## 📡 API Reference
 
 ### Autenticación
 
-| Método | Ruta | Descripción | Auth requerida |
-|--------|------|-------------|---------------|
-| `POST` | `/api/v1/auth/login` | Login — retorna `access_token` y `refresh_token` | No |
-| `POST` | `/api/v1/auth/register` | Registro de nuevo usuario | No |
-| `POST` | `/api/v1/auth/refresh` | Renovar access token | No |
-| `GET`  | `/api/v1/auth/me` | Perfil del usuario autenticado | ✅ Bearer |
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/api/v1/auth/register` | Crear cuenta (con opción `is_business_owner`) |
+| `POST` | `/api/v1/auth/login` | Login → `access_token` + `refresh_token` |
+| `POST` | `/api/v1/auth/refresh` | Renovar access token |
+| `GET`  | `/api/v1/auth/me` | Perfil autenticado |
 
 ### Negocios
 
-| Método | Ruta | Descripción | Auth |
-|--------|------|-------------|------|
-| `GET`    | `/api/v1/businesses` | Lista paginada (`?page&limit&category`) | No |
-| `GET`    | `/api/v1/businesses/{id}` | Detalle de un negocio | No |
-| `POST`   | `/api/v1/businesses` | Crear negocio | `business_owner` |
-| `PATCH`  | `/api/v1/businesses/{id}` | Actualizar negocio | `business_owner` |
-| `DELETE` | `/api/v1/businesses/{id}` | Eliminar negocio | `admin` |
+| Método | Ruta | Auth |
+|--------|------|------|
+| `GET`    | `/api/v1/businesses` | Público |
+| `GET`    | `/api/v1/businesses/{id}` | Público |
+| `GET`    | `/api/v1/businesses/categories` | Público |
+| `POST`   | `/api/v1/businesses` | `business_owner` |
+| `PATCH`  | `/api/v1/businesses/{id}` | `business_owner` |
 
-### Reseñas *(almacenadas en Cassandra)*
+### Reseñas
 
-| Método | Ruta | Descripción | Auth | Paginación |
-|--------|------|-------------|------|-----------|
-| `POST`   | `/api/v1/reviews` | Crear reseña | ✅ Bearer | — |
-| `GET`    | `/api/v1/reviews/business/{id}` | Reseñas de un negocio | No | `?page=1&limit=20&sort=newest` |
-| `GET`    | `/api/v1/reviews/user/{id}` | Reseñas de un usuario | No | `?page=1&limit=20` |
-| `GET`    | `/api/v1/reviews/{review_id}` | Detalle de una reseña | No | — |
-| `PATCH`  | `/api/v1/reviews/{review_id}` | Actualizar reseña | Autor / Admin | — |
-| `DELETE` | `/api/v1/reviews/{review_id}` | Eliminar reseña | Autor / Admin | — |
-| `POST`   | `/api/v1/reviews/{review_id}/helpful` | Votar como útil | ✅ Bearer | — |
-| `POST`   | `/api/v1/reviews/{review_id}/respond` | Respuesta del dueño | `business_owner` | — |
+| Método | Ruta | Auth |
+|--------|------|------|
+| `GET`    | `/api/v1/reviews/business/{id}` | Público |
+| `POST`   | `/api/v1/reviews` | Autenticado |
+| `PATCH`  | `/api/v1/reviews/{id}` | Autor/Admin |
+| `DELETE` | `/api/v1/reviews/{id}` | Autor/Admin |
+| `POST`   | `/api/v1/reviews/{id}/helpful` | Autenticado |
+| `POST`   | `/api/v1/reviews/{id}/respond` | `business_owner` |
 
-**Parámetros de paginación:**
+### Otros
 
-| Parámetro | Tipo | Default | Descripción |
-|-----------|------|---------|-------------|
-| `page`  | int | 1  | Número de página |
-| `limit` | int | 20 | Resultados por página (máx 100) |
-| `sort`  | str | `newest` | `newest` \| `oldest` \| `highest` \| `lowest` \| `helpful` |
-
-**Ejemplo de respuesta paginada:**
-```json
-{
-  "items": [ { "id": "...", "rating": 5, "text": "Excelente!" } ],
-  "total": 42,
-  "page":  1,
-  "limit": 20
-}
-```
-
-### Comentarios *(almacenados en Cassandra)*
-
-| Método | Ruta | Descripción | Auth | Paginación |
-|--------|------|-------------|------|-----------|
-| `GET`    | `/api/v1/reviews/{review_id}/comments` | Listar comentarios | No | `?page=1&limit=20` |
-| `POST`   | `/api/v1/reviews/{review_id}/comments` | Agregar comentario | ✅ Bearer | — |
-| `PATCH`  | `/api/v1/comments/{comment_id}` | Editar comentario | Autor / Admin | — |
-| `DELETE` | `/api/v1/comments/{comment_id}` | Eliminar comentario | Autor / Admin | — |
-
-### Dashboard *(solo `business_owner`)*
-
-| Método | Ruta | Descripción | Paginación |
-|--------|------|-------------|-----------|
-| `GET` | `/api/v1/dashboard/stats` | Estadísticas de SOLO los negocios propios | — |
-| `GET` | `/api/v1/dashboard/reviews` | Reseñas de negocios propios | `?page&limit&business_id` |
-
-### Búsqueda y Fotos
-
-| Método | Ruta | Descripción | Auth |
-|--------|------|-------------|------|
-| `GET`  | `/api/v1/search` | Búsqueda por texto, categoría, rating, ubicación | No |
-| `POST` | `/api/v1/photos/upload` | Subir foto (vincula a reseña con `review_id`) | ✅ Bearer |
-| `GET`  | `/api/v1/health` | Estado del servidor | No |
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET`  | `/api/v1/search` | Búsqueda global |
+| `POST` | `/api/v1/photos/upload` | Subir foto |
+| `GET`  | `/api/v1/dashboard/stats` | Stats del dueño |
+| `GET`  | `/api/v1/health` | Estado del servidor |
 
 ---
 
-## Cassandra — Distribución de datos
-
-### Verificar estado del cluster
+## 🔧 Comandos Útiles
 
 ```bash
-# Estado y token ranges de cada nodo
+# Ver estado del cluster Cassandra
 docker exec localreview-cassandra1 nodetool status
 
-# Distribución del keyspace
-docker exec localreview-cassandra1 nodetool describering localreview
-
-# CQL interactivo
+# Consola CQL interactiva
 docker exec -it localreview-cassandra1 cqlsh
 USE localreview;
 DESCRIBE tables;
-SELECT business_id, rating, user_display_name FROM reviews_by_business LIMIT 10;
-```
 
-### Tablas y estrategia de partición
+# Detener todos los servicios
+docker compose down
 
-| Tabla | Partition Key | Clustering | Propósito |
-|-------|--------------|------------|-----------|
-| `reviews` | `id` | — | Lookup por ID de reseña |
-| `reviews_by_business` | `business_id` | `created_at DESC, id` | Listar reseñas de un negocio |
-| `reviews_by_user` | `user_id` | `created_at DESC, id` | Listar reseñas de un usuario |
-| `comments` | `id` | — | Lookup por ID de comentario |
-| `comments_by_review` | `review_id` | `created_at ASC, id` | Listar comentarios de una reseña |
-
----
-
-## Backup y Recuperación
-
-### Backup manual con nodetool (SSTables)
-
-```powershell
-# Snapshot en ambos nodos con timestamp automático
-.\backend\scripts\backup\manual_backup.ps1
-
-# Con tag personalizado
-.\backend\scripts\backup\manual_backup.ps1 -tag "antes_deploy_v2"
-
-# Listar snapshots existentes
-docker exec localreview-cassandra1 nodetool listsnapshots
-```
-
-### Herramienta de terceros — Export JSON
-
-```powershell
-cd backend
-
-# Exportar todas las tablas a archivos JSONL
-.venv\Scripts\python scripts\backup\third_party_backup.py --output ..\backups\cassandra
-
-# Ver todas las opciones
-.venv\Scripts\python scripts\backup\third_party_backup.py --help
-```
-
-### Restaurar
-
-```powershell
-# Restaurar desde snapshot nodetool
-.\backend\scripts\backup\restore_backup.ps1 -tag "antes_deploy_v2"
-
-# Restaurar desde export JSON
-cd backend
-.venv\Scripts\python scripts\backup\third_party_backup.py --restore --input ..\backups\cassandra\2026-05-22T12-00-00
+# Limpiar datos y empezar de cero
+docker compose down -v
+docker compose up -d
 ```
 
 ---
 
-## Tests
+## 🧪 Tests
 
-```powershell
+```bash
 cd backend
-
-# Todos los tests con verbose
-.venv\Scripts\pytest tests/ -v
-
-# Con reporte de cobertura
-.venv\Scripts\pytest tests/ --cov=app --cov-report=term-missing
-
-# Un archivo específico
-.venv\Scripts\pytest tests/test_dashboard.py -v
-.venv\Scripts\pytest tests/test_comments.py -v
+.venv\Scripts\pytest tests/ -v --cov=app
 ```
 
 ---
 
-## Bugs corregidos (Fase 1)
+## 📋 Roles del Sistema
 
-| # | Severidad | Bug | Fix |
-|---|-----------|-----|-----|
-| 1 | 🔴 SEGURIDAD | Dashboard mostraba datos de **todos** los negocios | Filtro por `owner_id` en PostgreSQL antes de consultar Cassandra |
-| 2 | 🔴 DATOS | `avg_rating` nunca se recalculaba | `BackgroundTasks` llama a `_recalculate_rating` tras cada cambio |
-| 3 | 🟡 UX | País por defecto era `"MX"` | Cambiado a `"SV"` en model y schema |
-| 4 | 🟡 FUNC | Fotos no se vinculaban a la reseña | `push_photo_to_review()` actualiza la lista en Cassandra |
-| 5 | 🟡 ESCALA | Comentarios retornaban lista plana con límite 500 | Paginación `{items, total, page, limit}` con Cassandra |
+| Rol | Permisos |
+|-----|----------|
+| `user` | Ver negocios, escribir reseñas y comentarios |
+| `business_owner` | Todo lo anterior + crear/editar negocios + dashboard |
+| `admin` | Acceso total + eliminar cualquier contenido |
+
+---
+
+## 📄 Licencia
+
+MIT © 2025 [xJonnyxD](https://github.com/xJonnyxD)

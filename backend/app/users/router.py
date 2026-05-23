@@ -1,12 +1,12 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import get_user_by_id
-from app.db.postgres import get_db
+from app.db.cassandra import cass_exec
 from app.dependencies import get_current_user
-from app.users.models import User
+from app.models import User
 from app.users.schemas import UserPublic, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
@@ -16,22 +16,32 @@ router = APIRouter(prefix="/api/v1/users", tags=["users"])
 async def update_me(
     data: UserUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
+    now = datetime.now(timezone.utc)
+    updates: dict = {}
+
     if data.display_name is not None:
-        current_user.display_name = data.display_name
+        updates["display_name"] = data.display_name
     if data.bio is not None:
-        current_user.bio = data.bio
-    if data.preferences is not None:
-        current_user.preferences = data.preferences
-    await db.commit()
-    await db.refresh(current_user)
+        updates["bio"] = data.bio
+
+    if updates:
+        updates["updated_at"] = now
+        set_clause = ", ".join(f"{k} = %s" for k in updates)
+        values = list(updates.values()) + [current_user.id]
+        await cass_exec(f"UPDATE users SET {set_clause} WHERE id = %s", values)
+        await cass_exec(f"UPDATE users_by_email SET {set_clause} WHERE email = %s",
+                        list(updates.values()) + [current_user.email])
+
+        for k, v in updates.items():
+            setattr(current_user, k, v)
+
     return current_user
 
 
 @router.get("/{user_id}", response_model=UserPublic)
-async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    user = await get_user_by_id(db, user_id)
+async def get_user(user_id: uuid.UUID):
+    user = await get_user_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
     return user

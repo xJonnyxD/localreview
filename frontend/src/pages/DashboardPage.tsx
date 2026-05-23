@@ -11,7 +11,7 @@ import StarRating from '../components/review/StarRating';
 import EditBusinessModal from '../components/business/EditBusinessModal';
 
 interface BusinessStat {
-  _id: string;
+  business_id: string;
   business_name?: string;
   avg_rating: number;
   total_reviews: number;
@@ -139,13 +139,13 @@ function BusinessStatCard({ s, onEdit }: { s: BusinessStat; onEdit: (id: string,
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <button
-          onClick={() => onEdit(s._id, s.business_name || 'Negocio')}
+          onClick={() => onEdit(s.business_id, s.business_name || 'Negocio')}
           className="flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 font-medium transition"
         >
           <Pencil className="w-3.5 h-3.5" />
         </button>
         <Link
-          to={`/business/${s._id}`}
+          to={`/business/${s.business_id}`}
           className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
         >
           Ver <ExternalLink className="w-3 h-3" />
@@ -402,7 +402,7 @@ export default function DashboardPage() {
 
                 {/* Mobile: cards apiladas */}
                 <div className="sm:hidden">
-                  {stats.map((s) => <BusinessStatCard key={s._id} s={s} onEdit={handleEditBiz} />)}
+                  {stats.map((s) => <BusinessStatCard key={s.business_id} s={s} onEdit={handleEditBiz} />)}
                 </div>
 
                 {/* Desktop: tabla */}
@@ -419,7 +419,7 @@ export default function DashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {stats.map((s) => (
-                        <tr key={s._id} className="hover:bg-gray-50 transition">
+                        <tr key={s.business_id} className="hover:bg-gray-50 transition">
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
@@ -429,7 +429,7 @@ export default function DashboardPage() {
                                 <p className="font-medium text-gray-900 text-sm">
                                   {s.business_name || 'Negocio'}
                                 </p>
-                                <p className="text-xs text-gray-400 font-mono">{s._id.substring(0, 8)}...</p>
+                                <p className="text-xs text-gray-400 font-mono">{(s.business_id || '').substring(0, 8)}...</p>
                               </div>
                             </div>
                           </td>
@@ -448,13 +448,13 @@ export default function DashboardPage() {
                           <td className="py-4 px-4 text-center">
                             <div className="flex items-center justify-center gap-3">
                               <button
-                                onClick={() => handleEditBiz(s._id, s.business_name || 'Negocio')}
+                                onClick={() => handleEditBiz(s.business_id, s.business_name || 'Negocio')}
                                 className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 font-medium transition"
                               >
                                 <Pencil className="w-3.5 h-3.5" /> Editar
                               </button>
                               <Link
-                                to={`/business/${s._id}`}
+                                to={`/business/${s.business_id}`}
                                 className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
                               >
                                 Ver <ExternalLink className="w-3 h-3" />

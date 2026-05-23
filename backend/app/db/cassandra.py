@@ -84,6 +84,96 @@ _DDL = [
     AND durable_writes = true
     """,
     f"USE {settings.CASSANDRA_KEYSPACE}",
+
+    # ── USERS ────────────────────────────────────────────────────────────────
+    """
+    CREATE TABLE IF NOT EXISTS users (
+        id              uuid PRIMARY KEY,
+        email           text,
+        password_hash   text,
+        display_name    text,
+        bio             text,
+        avatar_url      text,
+        role            text,
+        is_active       boolean,
+        preferences     text,
+        created_at      timestamp,
+        updated_at      timestamp
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS users_by_email (
+        email           text PRIMARY KEY,
+        id              uuid,
+        password_hash   text,
+        display_name    text,
+        bio             text,
+        avatar_url      text,
+        role            text,
+        is_active       boolean,
+        preferences     text,
+        created_at      timestamp,
+        updated_at      timestamp
+    )
+    """,
+
+    # ── CATEGORIES ───────────────────────────────────────────────────────────
+    """
+    CREATE TABLE IF NOT EXISTS categories (
+        id          int PRIMARY KEY,
+        name        text,
+        slug        text,
+        icon        text,
+        parent_id   int
+    )
+    """,
+
+    # ── BUSINESSES ───────────────────────────────────────────────────────────
+    """
+    CREATE TABLE IF NOT EXISTS businesses (
+        id              uuid PRIMARY KEY,
+        owner_id        uuid,
+        name            text,
+        slug            text,
+        description     text,
+        address         text,
+        city            text,
+        state           text,
+        postal_code     text,
+        country         text,
+        phone           text,
+        email           text,
+        website         text,
+        latitude        double,
+        longitude       double,
+        price_level     int,
+        is_verified     boolean,
+        is_active       boolean,
+        avg_rating      double,
+        review_count    int,
+        photo_url       text,
+        category_ids    list<int>,
+        category_names  list<text>,
+        hours_json      text,
+        created_at      timestamp,
+        updated_at      timestamp
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS businesses_by_slug (
+        slug        text PRIMARY KEY,
+        id          uuid
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS businesses_by_owner (
+        owner_id    uuid,
+        business_id uuid,
+        PRIMARY KEY (owner_id, business_id)
+    )
+    """,
+
+    # ── REVIEWS ──────────────────────────────────────────────────────────────
     """
     CREATE TABLE IF NOT EXISTS reviews (
         id              uuid,

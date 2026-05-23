@@ -22,7 +22,7 @@ from app.reviews.service import (
     update_review,
 )
 from app.sync.tasks import _recalculate_rating
-from app.users.models import User
+from app.models import User
 
 router = APIRouter(prefix="/api/v1/reviews", tags=["reviews"])
 

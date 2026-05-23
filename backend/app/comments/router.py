@@ -11,7 +11,7 @@ from app.comments.service import (
 )
 from app.dependencies import get_current_user
 from app.reviews.service import get_review_by_id
-from app.users.models import User
+from app.models import User
 
 router = APIRouter(tags=["comments"])
 

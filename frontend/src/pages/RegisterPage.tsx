@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { MapPin, Eye, EyeOff, AlertCircle, CheckCircle2, Store } from 'lucide-react';
 import { register, login } from '../api/auth';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -44,6 +44,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { fetchUser } = useAuthStore();
@@ -54,10 +55,10 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      await register(email, password, displayName);
+      await register(email, password, displayName, isOwner);
       await login(email, password);
       await fetchUser();
-      navigate('/');
+      navigate(isOwner ? '/dashboard' : '/');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Error al crear la cuenta. Intenta de nuevo.');
     } finally {
@@ -144,6 +145,36 @@ export default function RegisterPage() {
               </div>
               <PasswordStrength password={password} />
             </div>
+
+            {/* Checkbox propietario */}
+            <button
+              type="button"
+              onClick={() => setIsOwner(!isOwner)}
+              className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition text-left ${
+                isOwner
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                isOwner ? 'bg-indigo-600' : 'bg-gray-200'
+              }`}>
+                <Store className={`w-5 h-5 ${isOwner ? 'text-white' : 'text-gray-500'}`} />
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${isOwner ? 'text-indigo-700' : 'text-gray-700'}`}>
+                  Soy propietario de un negocio
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Podras registrar y gestionar tu negocio
+                </p>
+              </div>
+              <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                isOwner ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'
+              }`}>
+                {isOwner && <div className="w-2 h-2 rounded-full bg-white" />}
+              </div>
+            </button>
 
             <button
               type="submit"

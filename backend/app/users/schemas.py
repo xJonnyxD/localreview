@@ -8,6 +8,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     display_name: str
+    is_business_owner: bool = False
 
 
 class UserUpdate(BaseModel):

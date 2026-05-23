@@ -6,7 +6,7 @@ from PIL import Image
 
 from app.config import settings
 from app.dependencies import get_current_user
-from app.users.models import User
+from app.models import User
 
 router = APIRouter(prefix="/api/v1/photos", tags=["photos"])
 

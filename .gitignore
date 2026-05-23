@@ -1,38 +1,64 @@
-# Python
+# ─── Python ───────────────────────────────────────────────
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 *.egg-info/
+*.egg
 dist/
 build/
+.eggs/
 .venv/
 venv/
+env/
 
-# Environment
+# ─── Variables de entorno ─────────────────────────────────
 .env
+.env.local
+.env.*.local
+!.env.example
 
-# Uploads
+# ─── Uploads (archivos generados en runtime) ──────────────
 uploads/
-
-# IDE
-.vscode/
-.idea/
-
-# Node
-node_modules/
-frontend/dist/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Docker
-docker-compose.override.yml
-
-# Claude Code
-.claude/
-
-# Backend uploads (local dev)
 backend/uploads/
 
-# Frontend build
+# ─── IDE / Editores ───────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Node.js ──────────────────────────────────────────────
+node_modules/
 frontend/dist/
+frontend/.vite/
+.npm/
+
+# ─── OS ───────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# ─── Docker ───────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Testing ──────────────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.log
+
+# ─── Cassandra data (local) ───────────────────────────────
+cassandra_data/
+
+# ─── Backups locales ──────────────────────────────────────
+backups/
+
+# ─── Archivos de herramientas de desarrollo ───────────────
+.claude/
+CLAUDE.md
+*.claude

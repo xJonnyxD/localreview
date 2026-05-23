@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { X, Building2, MapPin, Phone, Globe, Clock, DollarSign, Loader2, Save } from 'lucide-react';
-import { getBusiness, updateBusiness, getCategories } from '../../api/businesses';
+import { X, Building2, MapPin, Phone, Globe, Clock, DollarSign, Loader2, Save, Camera } from 'lucide-react';
+import { getBusiness, updateBusiness, getCategories, uploadBusinessPhoto } from '../../api/businesses';
 import { toast } from '../../stores/toastStore';
 import type { Category } from '../../types';
 
@@ -38,6 +38,8 @@ export default function EditBusinessModal({ businessId, businessName, onSaved, o
   const [hours, setHours] = useState<HourEntry[]>(
     DAYS.map((_, i) => ({ day_of_week: i, is_closed: i >= 6, open_time: '08:00', close_time: '18:00' }))
   );
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -57,6 +59,7 @@ export default function EditBusinessModal({ businessId, businessName, onSaved, o
         setLng(biz.longitude != null ? String(biz.longitude) : '');
         setPriceLevel((biz.price_level as 1 | 2 | 3 | 4) || 1);
         setSelectedCategories(biz.categories.map((c) => c.id));
+        if (biz.photo_url) setPhotoPreview(biz.photo_url);
         if (biz.hours.length > 0) {
           const filled = DAYS.map((_, i) => {
             const h = biz.hours.find((x) => x.day_of_week === i);
@@ -94,6 +97,16 @@ export default function EditBusinessModal({ businessId, businessName, onSaved, o
     }
     setSubmitting(true);
     try {
+      // Subir foto nueva si se seleccionó una
+      let newPhotoUrl: string | undefined;
+      if (photoFile) {
+        try {
+          newPhotoUrl = await uploadBusinessPhoto(photoFile);
+        } catch {
+          toast.error('No se pudo subir la foto');
+        }
+      }
+
       const payload: Record<string, unknown> = {
         name: name.trim(),
         description: description.trim() || null,
@@ -114,6 +127,8 @@ export default function EditBusinessModal({ businessId, businessName, onSaved, o
         payload.latitude = parseFloat(lat);
         payload.longitude = parseFloat(lng);
       }
+      if (newPhotoUrl) payload.photo_url = newPhotoUrl;
+
       await updateBusiness(businessId, payload);
       toast.success('Negocio actualizado');
       onSaved();
@@ -155,6 +170,47 @@ export default function EditBusinessModal({ businessId, businessName, onSaved, o
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
             <div className="p-4 sm:p-6 space-y-5">
+
+              {/* Foto */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <Camera className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
+                  Foto principal
+                </label>
+                {photoPreview ? (
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden group">
+                    <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
+                    <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer">
+                      <span className="bg-white/90 text-gray-800 text-sm font-semibold px-4 py-2 rounded-lg">
+                        Cambiar foto
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) { setPhotoFile(f); setPhotoPreview(URL.createObjectURL(f)); }
+                        }}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition">
+                    <Camera className="w-6 h-6 text-gray-300 mb-1" />
+                    <span className="text-sm text-gray-400">Subir foto del negocio</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) { setPhotoFile(f); setPhotoPreview(URL.createObjectURL(f)); }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
 
               {/* Nombre */}
               <div>

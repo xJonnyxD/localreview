@@ -2,24 +2,10 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # PostgreSQL
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "localreview"
-    POSTGRES_USER: str = "localreview"
-    POSTGRES_PASSWORD: str = "localreview_dev"
-
-    # MongoDB (kept for legacy; reviews/comments now live in Cassandra)
-    MONGODB_URL: str = "mongodb://localhost:27017"
-    MONGODB_DB: str = "localreview"
-
-    # Cassandra
+    # Cassandra (única base de datos)
     CASSANDRA_HOSTS: list[str] = ["localhost"]
     CASSANDRA_KEYSPACE: str = "localreview"
     CASSANDRA_PORT: int = 9042
-
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379"
 
     # JWT
     JWT_SECRET_KEY: str = "change-this-to-a-random-secret-key"
@@ -32,15 +18,6 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
     UPLOAD_DIR: str = "./uploads"
-
-    @property
-    def postgres_url(self) -> str:
-        # Use psycopg3 (postgresql+psycopg) which supports Python 3.14+
-        # asyncpg has incompatibilities with Python 3.14 on Windows
-        return (
-            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
 
     model_config = {"env_file": "../.env", "extra": "ignore"}
 

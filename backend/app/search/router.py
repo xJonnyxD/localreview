@@ -1,95 +1,98 @@
-import hashlib
-import json
+"""
+Búsqueda de negocios — Cassandra + filtrado en Python.
+Para conjuntos pequeños (negocios locales de El Salvador) es eficiente.
+La distancia se calcula con Haversine en Python.
+"""
+from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Request
-from geoalchemy2.functions import ST_DWithin, ST_Distance, ST_MakePoint
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+import math
 
-from app.businesses.models import Business, BusinessCategory
+from fastapi import APIRouter, Query
+
 from app.businesses.schemas import BusinessResponse
-from app.businesses.router import business_to_response
-from app.db.postgres import get_db
-from app.db.redis import get_redis
+from app.businesses.service import _get_categories_by_ids
+from app.db.cassandra import cass_exec
+from app.models import Business
 
 router = APIRouter(prefix="/api/v1/search", tags=["search"])
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
 @router.get("", response_model=dict)
 async def search_businesses(
-    request: Request,
     q: str | None = None,
     lat: float | None = None,
     lng: float | None = None,
-    radius: float = Query(5, description="Radius in km"),
+    radius: float = Query(50, description="Radio en km"),
     category_id: int | None = None,
     min_rating: float | None = None,
-    price_level: str | None = Query(None, description="Comma-separated: 1,2,3"),
-    sort: str = Query("rating", description="rating|distance|newest"),
+    price_level: str | None = Query(None, description="Niveles separados por coma: 1,2,3"),
+    sort: str = Query("rating", description="rating | distance | newest"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
 ):
-    # Check cache
-    redis = get_redis()
-    cache_key = None
-    if redis:
-        query_hash = hashlib.md5(str(request.query_params).encode()).hexdigest()
-        cache_key = f"search:results:{query_hash}"
-        cached = await redis.get(cache_key)
-        if cached:
-            return json.loads(cached)
+    # Cargar todos los negocios activos
+    rows = list(await cass_exec("SELECT * FROM businesses", ()))
+    rows = [r for r in rows if r.get("is_active")]
 
-    query = (
-        select(Business)
-        .options(selectinload(Business.categories), selectinload(Business.hours))
-        .where(Business.is_active == True)
-    )
-
+    # ── Filtros ──────────────────────────────────────────────────────────────
     if q:
-        query = query.where(Business.name.ilike(f"%{q}%"))
+        q_lower = q.lower()
+        rows = [r for r in rows if q_lower in (r.get("name") or "").lower()
+                or q_lower in (r.get("description") or "").lower()
+                or q_lower in (r.get("city") or "").lower()]
 
-    if lat is not None and lng is not None:
-        point = ST_MakePoint(lng, lat)
-        radius_meters = radius * 1000
-        query = query.where(ST_DWithin(Business.location, point, radius_meters))
-
-    if category_id:
-        query = query.join(BusinessCategory).where(BusinessCategory.category_id == category_id)
+    if category_id is not None:
+        rows = [r for r in rows if category_id in (r.get("category_ids") or [])]
 
     if min_rating is not None:
-        query = query.where(Business.avg_rating >= min_rating)
+        rows = [r for r in rows if float(r.get("avg_rating") or 0) >= min_rating]
 
     if price_level:
-        levels = [int(x) for x in price_level.split(",")]
-        query = query.where(Business.price_level.in_(levels))
+        levels = {int(x) for x in price_level.split(",") if x.strip().isdigit()}
+        rows = [r for r in rows if r.get("price_level") in levels]
 
-    # Count
-    count_query = select(func.count()).select_from(query.subquery())
-    total = (await db.execute(count_query)).scalar()
+    if lat is not None and lng is not None:
+        filtered = []
+        for r in rows:
+            blat, blng = r.get("latitude"), r.get("longitude")
+            if blat is not None and blng is not None:
+                if _haversine_km(lat, lng, blat, blng) <= radius:
+                    filtered.append(r)
+            else:
+                filtered.append(r)  # sin coordenadas → incluir
+        rows = filtered
 
-    # Sort
+    total = len(rows)
+
+    # ── Ordenamiento ─────────────────────────────────────────────────────────
     if sort == "distance" and lat is not None and lng is not None:
-        point = ST_MakePoint(lng, lat)
-        query = query.order_by(ST_Distance(Business.location, point))
+        def dist_key(r):
+            blat, blng = r.get("latitude"), r.get("longitude")
+            if blat is not None and blng is not None:
+                return _haversine_km(lat, lng, blat, blng)
+            return 99999.0
+        rows.sort(key=dist_key)
     elif sort == "newest":
-        query = query.order_by(Business.created_at.desc())
+        rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
     else:
-        query = query.order_by(Business.avg_rating.desc())
+        rows.sort(key=lambda r: float(r.get("avg_rating") or 0), reverse=True)
 
-    query = query.offset((page - 1) * limit).limit(limit)
-    result = await db.execute(query)
-    items = list(result.scalars().all())
+    page_rows = rows[(page - 1) * limit: page * limit]
 
-    response = {
-        "items": [BusinessResponse(**business_to_response(b)).model_dump(mode="json") for b in items],
-        "total": total,
-        "page": page,
-        "limit": limit,
-    }
+    # ── Construir respuesta ───────────────────────────────────────────────────
+    items = []
+    for row in page_rows:
+        cat_ids = list(row.get("category_ids") or [])
+        cats = await _get_categories_by_ids(cat_ids)
+        biz = Business.from_row(row, categories=cats)
+        items.append(BusinessResponse(**biz.to_response_dict()).model_dump(mode="json"))
 
-    if redis and cache_key:
-        await redis.set(cache_key, json.dumps(response, default=str), ex=120)
-
-    return response
+    return {"items": items, "total": total, "page": page, "limit": limit}

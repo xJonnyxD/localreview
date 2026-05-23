@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, MapPin, Phone, Globe, Clock, DollarSign, ChevronLeft, Loader2, Plus } from 'lucide-react';
-import { createBusiness, getCategories } from '../api/businesses';
+import { Building2, MapPin, Phone, Globe, Clock, DollarSign, ChevronLeft, Loader2, Plus, Camera, X } from 'lucide-react';
+import { createBusiness, getCategories, uploadBusinessPhoto } from '../api/businesses';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../stores/toastStore';
 import type { Category } from '../types';
@@ -42,6 +42,9 @@ export default function CreateBusinessPage() {
   const [priceLevel, setPriceLevel] = useState<1 | 2 | 3 | 4>(1);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [hours, setHours] = useState<HourEntry[]>(defaultHours());
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
@@ -70,6 +73,18 @@ export default function CreateBusinessPage() {
     );
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !address.trim() || !city.trim()) {
@@ -78,6 +93,19 @@ export default function CreateBusinessPage() {
     }
     setSubmitting(true);
     try {
+      // Subir foto primero si hay una seleccionada
+      let photoUrl: string | undefined;
+      if (photoFile) {
+        setUploadingPhoto(true);
+        try {
+          photoUrl = await uploadBusinessPhoto(photoFile);
+        } catch {
+          toast.error('No se pudo subir la foto, el negocio se creara sin imagen');
+        } finally {
+          setUploadingPhoto(false);
+        }
+      }
+
       const payload = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -92,6 +120,7 @@ export default function CreateBusinessPage() {
         price_level: priceLevel,
         category_ids: selectedCategories,
         hours: hours.filter((h) => !h.is_closed),
+        photo_url: photoUrl,
       };
       const biz = await createBusiness(payload);
       toast.success(`Negocio "${biz.name}" creado exitosamente`);
@@ -203,6 +232,35 @@ export default function CreateBusinessPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Foto del negocio */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Camera className="w-5 h-5 text-indigo-600" />
+              <h2 className="font-bold text-gray-900">Foto principal</h2>
+            </div>
+            {photoPreview ? (
+              <div className="relative w-full h-48 rounded-xl overflow-hidden group">
+                <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-3">
+                  <label className="cursor-pointer bg-white/90 text-gray-800 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-white transition">
+                    Cambiar
+                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} className="hidden" />
+                  </label>
+                  <button type="button" onClick={handleRemovePhoto} className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition">
+                <Camera className="w-8 h-8 text-gray-300 mb-2" />
+                <span className="text-sm font-medium text-gray-500">Haz clic para subir una foto</span>
+                <span className="text-xs text-gray-400 mt-1">JPG, PNG o WebP · Max 10 MB</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} className="hidden" />
+              </label>
+            )}
           </div>
 
           {/* Ubicacion */}
@@ -352,7 +410,9 @@ export default function CreateBusinessPage() {
               disabled={submitting}
               className="flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition shadow-sm w-full sm:w-auto"
             >
-              {submitting ? (
+              {uploadingPhoto ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo foto...</>
+              ) : submitting ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Creando...</>
               ) : (
                 <><Plus className="w-4 h-4" /> Crear Negocio</>

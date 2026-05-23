@@ -1,37 +1,62 @@
-import uuid
+from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
+from datetime import datetime, timezone
 
 from app.auth.utils import hash_password, verify_password
-from app.users.models import User
+from app.db.cassandra import cass_exec
+from app.models import User
 from app.users.schemas import UserCreate
 
 
-async def create_user(db: AsyncSession, data: UserCreate) -> User:
-    user = User(
-        email=data.email,
-        password_hash=hash_password(data.password),
-        display_name=data.display_name,
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+async def create_user(data: UserCreate) -> User:
+    user_id = uuid.uuid4()
+    now = _now()
+    hashed = hash_password(data.password)
+    email = data.email.lower().strip()
+
+    role = "business_owner" if getattr(data, "is_business_owner", False) else "user"
+
+    row = (
+        user_id, email, hashed, data.display_name,
+        None, None, role, True, "{}", now, now,
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+    cols = "id, email, password_hash, display_name, bio, avatar_url, role, is_active, preferences, created_at, updated_at"
+    placeholders = ", ".join(["%s"] * 11)
+
+    await cass_exec(f"INSERT INTO users ({cols}) VALUES ({placeholders})", row)
+    await cass_exec(f"INSERT INTO users_by_email ({cols}) VALUES ({placeholders})", row)
+
+    return User(
+        id=user_id, email=email, password_hash=hashed,
+        display_name=data.display_name, role=role, is_active=True,
+        created_at=now, updated_at=now,
+    )
 
 
-async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
-    result = await db.execute(select(User).where(User.email == email))
-    return result.scalar_one_or_none()
+async def get_user_by_email(email: str) -> User | None:
+    rows = list(await cass_exec(
+        "SELECT * FROM users_by_email WHERE email = %s", (email.lower().strip(),)
+    ))
+    if not rows:
+        return None
+    return User.from_row(rows[0])
 
 
-async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User | None:
-    result = await db.execute(select(User).where(User.id == user_id))
-    return result.scalar_one_or_none()
+async def get_user_by_id(user_id: str | uuid.UUID) -> User | None:
+    uid = uuid.UUID(str(user_id)) if not isinstance(user_id, uuid.UUID) else user_id
+    rows = list(await cass_exec("SELECT * FROM users WHERE id = %s", (uid,)))
+    if not rows:
+        return None
+    return User.from_row(rows[0])
 
 
-async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
-    user = await get_user_by_email(db, email)
+async def authenticate_user(email: str, password: str) -> User | None:
+    user = await get_user_by_email(email)
     if not user or not verify_password(password, user.password_hash):
         return None
     return user
