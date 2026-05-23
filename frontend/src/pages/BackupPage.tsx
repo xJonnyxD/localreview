@@ -9,6 +9,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { toast } from '../stores/toastStore';
 import {
   getBackupStatus, triggerDbBackup, triggerWebBackup, triggerFullBackup,
+  downloadBackup,
   type BackupEntry, type BackupStatus,
 } from '../api/backup';
 
@@ -108,11 +109,24 @@ function Countdown({ nextBackupAt }: { nextBackupAt: string | null }) {
 // ─── Fila de historial ────────────────────────────────────────────────────────
 
 function BackupRow({ entry }: { entry: BackupEntry }) {
+  const [downloading, setDownloading] = useState(false);
   const isDb = entry.type === 'db';
   const date = new Date(entry.created_at).toLocaleString('es-SV', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await downloadBackup(entry.type, entry.filename);
+      toast.success(`Descargando ${entry.filename}`);
+    } catch {
+      toast.error('Error al descargar el backup');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="flex items-center gap-3 py-3 px-4 border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition">
@@ -144,11 +158,23 @@ function BackupRow({ entry }: { entry: BackupEntry }) {
           <p className="text-xs text-gray-600 mt-0.5">{entry.files_count} archivos</p>
         )}
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-xs font-mono text-gray-400">{entry.size_human}</p>
-        <p className="text-xs text-gray-600 mt-0.5 font-mono truncate max-w-[120px]">
-          {entry.filename.slice(-20)}
-        </p>
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-right">
+          <p className="text-xs font-mono text-gray-400">{entry.size_human}</p>
+          <p className="text-xs text-gray-600 mt-0.5 font-mono truncate max-w-[110px]">
+            {entry.filename.slice(-18)}
+          </p>
+        </div>
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          title="Descargar backup"
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-indigo-700 text-gray-400 hover:text-white transition disabled:opacity-40"
+        >
+          {downloading
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <Download className="w-4 h-4" />}
+        </button>
       </div>
     </div>
   );

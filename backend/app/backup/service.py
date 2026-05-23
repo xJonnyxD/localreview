@@ -23,6 +23,7 @@ BACKUP_WEB_DIR = BACKUP_ROOT / "web"
 # ─── Tablas a exportar ───────────────────────────────────────────────────────
 
 CASSANDRA_TABLES = [
+    "categories",
     "users",
     "users_by_email",
     "businesses",
@@ -33,7 +34,6 @@ CASSANDRA_TABLES = [
     "reviews_by_user",
     "comments",
     "comments_by_review",
-    "categories",
 ]
 
 # ─── Estado en memoria ───────────────────────────────────────────────────────

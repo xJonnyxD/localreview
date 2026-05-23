@@ -1,10 +1,16 @@
 """
-Backup router — endpoints para backup manual y consulta de estado.
+Backup router — endpoints para backup manual, consulta de estado y descarga.
 Solo accesible por admin y business_owner.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from pathlib import Path
 
-from app.backup.service import backup_database, backup_web, backup_full, get_status
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
+
+from app.backup.service import (
+    backup_database, backup_web, backup_full, get_status,
+    BACKUP_DB_DIR, BACKUP_WEB_DIR,
+)
 from app.dependencies import get_current_user
 from app.models import User
 
@@ -63,3 +69,31 @@ async def trigger_full_backup(current_user: User = Depends(_require_owner_or_adm
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al crear backup completo: {exc}",
         )
+
+
+@router.get("/download/{backup_type}/{filename}")
+async def download_backup(
+    backup_type: str,
+    filename: str,
+    current_user: User = Depends(_require_owner_or_admin),
+):
+    """Descarga un archivo de backup ZIP."""
+    if backup_type not in ("db", "web"):
+        raise HTTPException(status_code=400, detail="Tipo de backup inválido (db o web)")
+
+    # Seguridad: evitar path traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido")
+
+    base_dir = BACKUP_DB_DIR if backup_type == "db" else BACKUP_WEB_DIR
+    filepath = base_dir / filename
+
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail="Archivo de backup no encontrado")
+
+    return FileResponse(
+        path=str(filepath),
+        filename=filename,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
