@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { MapPin, Search, User, LogOut, LayoutDashboard, Menu, X, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { searchBusinesses } from '../../api/businesses';
+import type { Business } from '../../types';
 
 export default function Header() {
   const { user, logout } = useAuthStore();
@@ -10,10 +12,20 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
+  // Quick search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<Business[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   // Cerrar menú móvil al cambiar de ruta
   useEffect(() => {
     setMobileOpen(false);
     setUserMenuOpen(false);
+    setShowDropdown(false);
+    setSearchQuery('');
   }, [location.pathname]);
 
   // Cerrar menú móvil al hacer scroll
@@ -24,11 +36,62 @@ export default function Header() {
     return () => window.removeEventListener('scroll', onScroll);
   }, [mobileOpen]);
 
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Debounce para sugerencias
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await searchBusinesses({ q: searchQuery.trim(), limit: 5, sort: 'rating' });
+        setSuggestions(res.items);
+        setShowDropdown(true);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const handleLogout = () => {
     logout();
     navigate('/');
     setUserMenuOpen(false);
     setMobileOpen(false);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (q) {
+      navigate(`/search?q=${encodeURIComponent(q)}`);
+    } else {
+      navigate('/search');
+    }
+    setShowDropdown(false);
+    inputRef.current?.blur();
+  };
+
+  const handleSuggestionClick = (biz: Business) => {
+    navigate(`/business/${biz.id}`);
+    setShowDropdown(false);
+    setSearchQuery('');
   };
 
   const isActive = (path: string) => location.pathname === path;
@@ -46,14 +109,80 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Search bar — desktop */}
-        <Link
-          to="/search"
-          className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-400 transition w-64 lg:w-80"
-        >
-          <Search className="w-4 h-4 shrink-0" />
-          <span className="text-sm truncate">Buscar negocios, lugares...</span>
-        </Link>
+        {/* Quick search — desktop */}
+        <div ref={searchRef} className="hidden md:block relative w-64 lg:w-80">
+          <form onSubmit={handleSearchSubmit}>
+            <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-300 rounded-full transition">
+              {searchLoading ? (
+                <svg className="w-4 h-4 text-gray-400 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+              ) : (
+                <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              )}
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => { if (suggestions.length > 0) setShowDropdown(true); }}
+                placeholder="Buscar negocios, lugares..."
+                className="flex-1 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setSuggestions([]); setShowDropdown(false); }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Dropdown de sugerencias */}
+          {showDropdown && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden">
+              {suggestions.map((biz) => (
+                <button
+                  key={biz.id}
+                  type="button"
+                  onClick={() => handleSuggestionClick(biz)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition text-left"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center shrink-0 overflow-hidden">
+                    {biz.photo_url ? (
+                      <img src={biz.photo_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <MapPin className="w-4 h-4 text-indigo-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{biz.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{biz.city}</p>
+                  </div>
+                  {biz.avg_rating > 0 && (
+                    <span className="shrink-0 text-xs font-bold text-amber-500">
+                      ★ {biz.avg_rating.toFixed(1)}
+                    </span>
+                  )}
+                </button>
+              ))}
+              <div className="border-t border-gray-100 mt-1 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSearchSubmit as unknown as React.MouseEventHandler}
+                  className="w-full text-left px-4 py-2 text-xs text-indigo-600 hover:bg-indigo-50 transition font-medium flex items-center gap-2"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  Ver todos los resultados para "{searchQuery}"
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Nav — desktop */}
         <nav className="hidden md:flex items-center gap-2">
