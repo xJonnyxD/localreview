@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, MessageCircle, Star, Trash2, X, ChevronLeft, ChevronRight, ExternalLink, Pencil, Camera, Loader2 } from 'lucide-react';
 import { uploadPhoto } from '../../api/reviews';
@@ -38,6 +38,25 @@ export default function ReviewCard({ review, onHelpful, onComment, onDelete, onE
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [localPhotos, setLocalPhotos] = useState(review.photos);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Swipe en lightbox
+  const touchStartX = useRef<number | null>(null);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null || lightboxIndex === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) < 40) return; // Ignorar toques pequeños
+    if (dx < 0) {
+      // Swipe izquierda → siguiente
+      setLightboxIndex((lightboxIndex + 1) % localPhotos.length);
+    } else {
+      // Swipe derecha → anterior
+      setLightboxIndex((lightboxIndex - 1 + localPhotos.length) % localPhotos.length);
+    }
+    touchStartX.current = null;
+  }, [lightboxIndex, localPhotos.length]);
 
   const isOwner = user?.id === review.user_id;
 
@@ -231,7 +250,12 @@ export default function ReviewCard({ review, onHelpful, onComment, onDelete, onE
           className="fixed inset-0 bg-black/80 z-[9998] flex items-center justify-center p-4"
           onClick={() => setLightboxIndex(null)}
         >
-          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative max-w-3xl w-full"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
             <img
               src={localPhotos[lightboxIndex].url}
               alt=""

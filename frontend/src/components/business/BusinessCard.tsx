@@ -21,33 +21,54 @@ function getOpenStatus(hours: BusinessHours[]): { open: boolean; label: string }
   const svTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/El_Salvador' }));
   const jsDay = svTime.getDay(); // 0=Dom … 6=Sab
   const todayISO = (jsDay + 6) % 7; // 0=Lun … 6=Dom
+  const nowMinutes = svTime.getHours() * 60 + svTime.getMinutes();
 
   const todayHours = hours.find((h) => h.day_of_week === todayISO);
-  if (!todayHours) return null;
+  const isTodayClosed = !todayHours || todayHours.is_closed;
 
-  if (todayHours.is_closed) return { open: false, label: 'Cerrado hoy' };
+  if (!isTodayClosed) {
+    const [openH, openM] = todayHours!.open_time.split(':').map(Number);
+    const [closeH, closeM] = todayHours!.close_time.split(':').map(Number);
+    const openMinutes = openH * 60 + openM;
+    const closeMinutes = closeH * 60 + closeM;
 
-  const [openH, openM] = todayHours.open_time.split(':').map(Number);
-  const [closeH, closeM] = todayHours.close_time.split(':').map(Number);
-  const nowMinutes = svTime.getHours() * 60 + svTime.getMinutes();
-  const openMinutes = openH * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM;
+    let isOpen: boolean;
+    if (closeMinutes < openMinutes) {
+      // Cruza medianoche (ej. 17:00–02:00)
+      isOpen = nowMinutes >= openMinutes || nowMinutes < closeMinutes;
+    } else {
+      isOpen = nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+    }
 
-  let isOpen: boolean;
-  if (closeMinutes < openMinutes) {
-    // Cruza medianoche (ej. 17:00–02:00)
-    isOpen = nowMinutes >= openMinutes || nowMinutes < closeMinutes;
-  } else {
-    isOpen = nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+    if (isOpen) {
+      // Si cierra en menos de 60 minutos, mostrar aviso
+      const minutesUntilClose = closeMinutes - nowMinutes;
+      if (minutesUntilClose > 0 && minutesUntilClose <= 60) {
+        return { open: true, label: `Cierra en ${minutesUntilClose} min` };
+      }
+      return { open: true, label: 'Abierto' };
+    }
+
+    // Cerrado pero abre hoy más tarde
+    if (nowMinutes < openMinutes) {
+      return { open: false, label: `Abre a las ${todayHours!.open_time.substring(0, 5)}` };
+    }
   }
 
-  // Si cierra en menos de 60 minutos, mostrar aviso
-  const minutesUntilClose = closeMinutes - nowMinutes;
-  if (isOpen && minutesUntilClose > 0 && minutesUntilClose <= 60) {
-    return { open: true, label: `Cierra en ${minutesUntilClose} min` };
+  // Buscar el próximo día que abre (mañana en adelante)
+  for (let i = 1; i <= 7; i++) {
+    const nextISO = (todayISO + i) % 7;
+    const nextHours = hours.find((h) => h.day_of_week === nextISO && !h.is_closed);
+    if (nextHours) {
+      const dayNames = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+      const label = i === 1
+        ? `Abre manana ${nextHours.open_time.substring(0, 5)}`
+        : `Abre el ${dayNames[nextISO]}`;
+      return { open: false, label };
+    }
   }
 
-  return { open: isOpen, label: isOpen ? 'Abierto' : 'Cerrado' };
+  return { open: false, label: 'Cerrado' };
 }
 
 export default function BusinessCard({ business }: Props) {
