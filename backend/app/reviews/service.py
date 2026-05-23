@@ -241,15 +241,18 @@ async def toggle_helpful(review_id: str, user_id: str) -> dict | None:
     rid = uuid.UUID(review_id)
     helpful_by: set = existing.get("helpful_by") or set()
 
+    current_count = int(existing.get("helpful_count") or 0)
     if user_id in helpful_by:
+        new_count = max(0, current_count - 1)
         await cass_exec(
-            "UPDATE reviews SET helpful_by = helpful_by - %s, helpful_count = helpful_count - 1 WHERE id = %s",
-            ({user_id}, rid),
+            "UPDATE reviews SET helpful_by = helpful_by - %s, helpful_count = %s WHERE id = %s",
+            ({user_id}, new_count, rid),
         )
     else:
+        new_count = current_count + 1
         await cass_exec(
-            "UPDATE reviews SET helpful_by = helpful_by + %s, helpful_count = helpful_count + 1 WHERE id = %s",
-            ({user_id}, rid),
+            "UPDATE reviews SET helpful_by = helpful_by + %s, helpful_count = %s WHERE id = %s",
+            ({user_id}, new_count, rid),
         )
 
     return await get_review_by_id(review_id)
