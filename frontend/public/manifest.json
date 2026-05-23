@@ -1,0 +1,28 @@
+{
+  "name": "LocalReview",
+  "short_name": "LocalReview",
+  "description": "Descubre y resena los mejores negocios locales de El Salvador",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "categories": ["lifestyle", "food", "business"],
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Buscar negocios",
+      "short_name": "Buscar",
+      "description": "Busca negocios cercanos",
+      "url": "/search"
+    }
+  ]
+}
