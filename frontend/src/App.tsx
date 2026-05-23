@@ -14,6 +14,7 @@ import BusinessDetailPage from './pages/BusinessDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/DashboardPage';
 import CreateBusinessPage from './pages/CreateBusinessPage';
+import BackupPage from './pages/BackupPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/dashboard/create" element={<CreateBusinessPage />} />
+            <Route path="/dashboard/backups" element={<BackupPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </ErrorBoundary>

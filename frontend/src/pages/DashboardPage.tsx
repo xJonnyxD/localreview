@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BarChart3, Star, MessageSquare, TrendingUp, ThumbsUp, ArrowUp, ArrowDown, Building2, CheckCircle2, Clock, ExternalLink, Plus, Send, Loader2, Pencil } from 'lucide-react';
+import { BarChart3, Star, MessageSquare, TrendingUp, ThumbsUp, ArrowUp, ArrowDown, Building2, CheckCircle2, Clock, ExternalLink, Plus, Send, Loader2, Pencil, Archive } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useAuthStore } from '../stores/authStore';
@@ -264,6 +264,14 @@ export default function DashboardPage() {
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden xs:inline sm:inline">Crear negocio</span>
+              </button>
+              <button
+                onClick={() => navigate('/dashboard/backups')}
+                className="flex items-center gap-1.5 bg-gray-800 text-gray-200 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-700 transition shadow-sm"
+                title="Backups del sistema"
+              >
+                <Archive className="w-4 h-4" />
+                <span className="hidden sm:inline">Backups</span>
               </button>
               <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
